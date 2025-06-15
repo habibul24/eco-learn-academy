@@ -1,7 +1,12 @@
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, assertSupabaseClient } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
+
+// Helper: never fetch if client broken
+function isClientValid(supabase: any): boolean {
+  return assertSupabaseClient(supabase);
+}
 
 export function useCourseProgress({
   user,
@@ -17,18 +22,15 @@ export function useCourseProgress({
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Defensive: do nothing if user or courseId is not valid
     if (!user || !courseId) return;
 
-    // Defensive: check if supabase is really a client
-    if (!supabase || typeof supabase.from !== "function") {
-      console.error("[useCourseProgress] Supabase client invalid!", supabase);
-      setSupabaseError("Supabase client is invalid! Progress cannot be fetched.");
+    if (!isClientValid(supabase)) {
+      setSupabaseError("Supabase client is not valid, cannot fetch progress.");
       setProgress(0);
       setAllWatched(false);
+      // Defensive: never run fetch
       return;
     }
-
     async function fetchProgress() {
       try {
         const { data: watched, error } = await supabase
@@ -44,15 +46,12 @@ export function useCourseProgress({
           setSupabaseError("Supabase query failed.");
           return;
         }
-        // Compute watched set
         const watchedIds = (watched || []).map((w) => w.video_id);
         const total = videos.length;
         const completed = videos.filter((v) => watchedIds.includes(v.id)).length;
-
         setProgress(total ? Math.round((completed / total) * 100) : 0);
         setAllWatched(completed === total && total > 0);
-        setSupabaseError(null); // clear error if successful
-        // Debug logging
+        setSupabaseError(null);
         console.log("[useCourseProgress] Progress fetch: watchedIds", watchedIds, "completed", completed, "of", total);
       } catch (err) {
         console.error("[useCourseProgress] Unexpected fetch error:", err);

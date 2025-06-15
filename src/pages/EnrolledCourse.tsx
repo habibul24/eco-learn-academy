@@ -9,6 +9,7 @@ import CourseProgress from "@/components/CourseProgress";
 import CourseDetailHeader from "@/components/CourseDetailHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useCourseProgress } from "@/hooks/useCourseProgress";
+import { assertSupabaseClient } from "@/integrations/supabase/client";
 
 // Runtime supabase client integrity check
 if (!supabase || typeof supabase.from !== "function") {
@@ -42,16 +43,14 @@ export default function EnrolledCourse() {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [activeVideoUrl, setActiveVideoUrl] = React.useState<string | null>(videos.length > 0 ? videos[0].video_url : null);
 
-  // Defensive: supabase runtime integrity check
-  if (!supabase || typeof supabase.from !== "function") {
+  // Prevent rendering if Supabase client is invalid
+  if (!assertSupabaseClient(supabase)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-red-50">
-        <div className="text-xl font-bold text-red-700 mb-6">Critical error: Supabase client is not valid</div>
+        <div className="text-xl font-bold text-red-700 mb-6">Supabase client broken</div>
         <div className="text-red-700 text-base max-w-lg mx-auto">
-          The application is currently unable to connect to the database. Please contact your administrator.<br />
-          <span className="block mt-4">
-            This usually means the Supabase client is not imported or initialized correctly.
-          </span>
+          The application cannot fetch data because the database client is invalid.<br />
+          <span className="block mt-4">Please reload or contact admin — check browser console for errors and search for <code>SUPABASE CLIENT INTEGRITY FAILURE</code>.</span>
         </div>
       </div>
     );
