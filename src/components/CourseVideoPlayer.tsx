@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { getYoutubeVideoId } from "@/utils/youtubeUtils";
@@ -26,9 +25,7 @@ export default function CourseVideoPlayer({
   const { user } = useAuthUser();
   const ytVideoId = getYoutubeVideoId(videoUrl ?? "");
   const { toast } = useToast();
-  // State to show Mark as Complete button
   const [videoEnded, setVideoEnded] = React.useState(false);
-  // Track if this video is completed in this session
   const [saving, setSaving] = React.useState(false);
   const [completed, setCompleted] = React.useState(false);
 
@@ -37,12 +34,20 @@ export default function CourseVideoPlayer({
     setCompleted(false);
   }, [videoUrl]);
 
-  // Visual warning if not signed in
+  // LOG WHICH VIDEO PLAYER is being chosen and with which IDs
+  console.log("[CourseVideoPlayer DEBUG]", {
+    videoUrl,
+    ytVideoId,
+    picked: videoUrl && ytVideoId ? "YouTubePlayer" : videoUrl ? "GenericVideoPlayer" : "Image fallback",
+    userId: user?.id,
+    courseTitle,
+    videoId
+  });
+
   if (!user) {
     return <AuthWarning />;
   }
 
-  // Handler to call after marking as complete
   const handleMarkComplete = async () => {
     if (!user || !videoId) return;
     setSaving(true);
@@ -85,7 +90,6 @@ export default function CourseVideoPlayer({
     }
   };
 
-  // For non-YouTube videos
   if (videoUrl && !ytVideoId) {
     return (
       <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex flex-col justify-center items-center relative">
@@ -106,7 +110,6 @@ export default function CourseVideoPlayer({
     );
   }
 
-  // YouTube video player
   return (
     <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex flex-col justify-center items-center relative">
       {videoUrl ? (
@@ -143,4 +146,3 @@ export default function CourseVideoPlayer({
     </div>
   );
 }
-

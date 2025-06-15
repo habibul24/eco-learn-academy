@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from "react";
 import { supabase, validateSupabaseClient } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -17,7 +16,7 @@ type YouTubePlayerProps = {
 
 // --- DEBUG header component
 const DebugHeader = ({ videoId, videoDbId, user }) => (
-  <div className="bg-red-300 text-red-900 text-lg font-bold text-center p-3 w-full rounded mb-3 border-2 border-red-600">
+  <div className="bg-red-300 text-red-900 text-lg font-bold text-center p-3 w-full rounded mb-3 border-2 border-red-600 z-50">
     DEBUG: YouTubePlayer ACTIVE<br/>
     videoId: <span className="font-mono">{videoId}</span> &nbsp; | &nbsp;
     videoDbId: <span className="font-mono">{videoDbId ?? "null"}</span> &nbsp; | &nbsp;
@@ -184,6 +183,10 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 
   return (
     <div className="w-full h-full min-h-[260px] relative">
+      {/* SUPER PROMINENT BANNER */}
+      <div className="fixed top-0 left-0 right-0 z-[1000] py-4 bg-red-800 text-white text-2xl text-center font-extrabold tracking-widest shadow-2xl pointer-events-auto">
+        DEBUG: YouTubePlayer RENDERED!
+      </div>
       <DebugHeader videoId={videoId} videoDbId={videoDbId} user={user} />
       {/* Super prominent fake always-visible complete button */}
       <div className="my-6 flex flex-col items-center justify-center bg-yellow-200 border-4 border-yellow-500 p-4 rounded shadow-lg">
