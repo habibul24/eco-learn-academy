@@ -1,7 +1,20 @@
-import React from "react";
-import { useEffect } from "react";
+
+import React, { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
+
+/**
+ * Extract YouTube video ID from a YouTube URL (support various url formats)
+ */
+function getYoutubeVideoId(url?: string | null): string | null {
+  if (!url) return null;
+  // Typical formats: https://www.youtube.com/watch?v=VIDEO_ID
+  // or https://youtu.be/VIDEO_ID
+  const youtubeRegex =
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = url.match(youtubeRegex);
+  return match ? match[1] : null;
+}
 
 type CourseVideoPlayerProps = {
   videoUrl: string | null;
@@ -11,34 +24,141 @@ type CourseVideoPlayerProps = {
   onComplete?: () => void;
 };
 
-export default function CourseVideoPlayer({ videoUrl, courseTitle, fallbackImage, videoId, onComplete }: CourseVideoPlayerProps) {
+// Small loader for player
+const PlayerLoading = () => (
+  <div className="w-full h-full flex items-center justify-center text-green-900 bg-white/50">
+    Loading video...
+  </div>
+);
+
+export default function CourseVideoPlayer({
+  videoUrl,
+  courseTitle,
+  fallbackImage,
+  videoId,
+  onComplete,
+}: CourseVideoPlayerProps) {
   const { user } = useAuthUser();
+  const playerRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  const ytVideoId = getYoutubeVideoId(videoUrl ?? "");
+  const [playerReady, setPlayerReady] = React.useState(false);
+
+  // Load YouTube IFrame API script only if it's a youtube video
   useEffect(() => {
-    if (user && videoId && videoUrl) {
-      // Mark as watched (for demo: on mount)
-      supabase
-        .from("user_progress")
-        .upsert({
-          user_id: user.id,
-          video_id: videoId,
-          watched: true,
-          progress_percentage: 100,
-        });
-      // Optionally, send onComplete callback
-      if (onComplete) onComplete();
-    }
-  }, [user, videoId, videoUrl, onComplete]);
+    if (!ytVideoId) return;
+    if ((window as any).YT && (window as any).YT.Player) return; // already loaded
 
-  return (
-    <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex justify-center items-center">
-      {videoUrl ? (
+    const scriptTag = document.createElement("script");
+    scriptTag.src = "https://www.youtube.com/iframe_api";
+    scriptTag.async = true;
+    document.body.appendChild(scriptTag);
+
+    return () => {
+      // Prevent duplicate scripts
+      document.body.removeChild(scriptTag);
+    };
+  }, [ytVideoId]);
+
+  // Create the YouTube player and listen for events
+  useEffect(() => {
+    if (!ytVideoId || !user || !videoId) return;
+
+    // YouTube API must be loaded before we can create a player
+    const onYouTubeIframeAPIReady = () => {
+      // If new video, remove previous player if exists
+      if (playerRef.current && typeof playerRef.current.destroy === "function") {
+        playerRef.current.destroy();
+      }
+      playerRef.current = new (window as any).YT.Player(
+        containerRef.current,
+        {
+          videoId: ytVideoId,
+          playerVars: {
+            controls: 1,
+            showinfo: 0,
+            rel: 0,
+            modestbranding: 1,
+            autoplay: 0,
+          },
+          events: {
+            onReady: () => setPlayerReady(true),
+            onStateChange: async (event: any) => {
+              // State 0 means ended, see: https://developers.google.com/youtube/iframe_api_reference#onStateChange
+              if (event.data === 0) {
+                // Only mark as watched if 100%, and only once
+                const result = await supabase
+                  .from("user_progress")
+                  .upsert({
+                    user_id: user.id,
+                    video_id: videoId,
+                    watched: true,
+                    progress_percentage: 100,
+                  });
+                if (onComplete) onComplete();
+              }
+            },
+          },
+        }
+      );
+    };
+
+    // If API already loaded
+    if ((window as any).YT && (window as any).YT.Player) {
+      onYouTubeIframeAPIReady();
+    } else {
+      // Wait for YT global to be available
+      (window as any).onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+    }
+
+    return () => {
+      // Clean player on unmount/video change
+      if (playerRef.current && typeof playerRef.current.destroy === "function") {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+    // Re-run if ytVideoId/videoId changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ytVideoId, user, videoId]);
+
+  // For non-YouTube videos, embed with iframe as before
+  if (videoUrl && !ytVideoId) {
+    return (
+      <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex justify-center items-center">
         <iframe
           src={videoUrl}
           title={courseTitle}
           className="w-full h-full min-h-[260px] rounded-lg"
           allowFullScreen
         />
+      </div>
+    );
+  }
+
+  // YouTube: show loader until ready
+  return (
+    <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex justify-center items-center">
+      {videoUrl ? (
+        ytVideoId ? (
+          <div className="w-full h-full min-h-[260px] relative">
+            <div
+              ref={containerRef}
+              className="w-full h-full min-h-[260px] rounded-lg"
+              id="youtube-player"
+            />
+            {!playerReady && <PlayerLoading />}
+          </div>
+        ) : (
+          // unreachable here but fallback
+          <iframe
+            src={videoUrl}
+            title={courseTitle}
+            className="w-full h-full min-h-[260px] rounded-lg"
+            allowFullScreen
+          />
+        )
       ) : (
         <img
           src={fallbackImage}
