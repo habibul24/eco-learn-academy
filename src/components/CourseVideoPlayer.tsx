@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { getYoutubeVideoId } from "@/utils/youtubeUtils";
@@ -6,6 +7,57 @@ import { GenericVideoPlayer } from "./video/GenericVideoPlayer";
 import { AuthWarning } from "./video/AuthWarning";
 import { useToast } from "@/components/ui/use-toast";
 import MarkCompleteButton from "./video/MarkCompleteButton";
+
+// NEW: Helper to create a certificate if not already present
+async function issueCertificateOnce({ userId, courseId, toast }: { userId: string, courseId: number, toast: any }) {
+  if (!userId || !courseId) return;
+  try {
+    const { supabase, validateSupabaseClient } = await import("@/integrations/supabase/client");
+    validateSupabaseClient();
+
+    // Check if certificate already exists
+    const { data: exists } = await supabase
+      .from("certificates")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("course_id", courseId)
+      .maybeSingle();
+
+    if (exists?.id) {
+      // Already exists
+      return;
+    }
+
+    // Insert certificate
+    const { error } = await supabase
+      .from("certificates")
+      .insert({
+        user_id: userId,
+        course_id: courseId,
+        issued_at: new Date().toISOString()
+      })
+      .select();
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Certificate error",
+        description: error.message || "Could not issue your certificate.",
+      });
+    } else {
+      toast({
+        title: "Certificate earned!",
+        description: "Your certificate is now available on the My Certificates page.",
+      });
+    }
+  } catch (e: any) {
+    toast({
+      variant: "destructive",
+      title: "Certificate error",
+      description: e?.message || "Could not issue your certificate.",
+    });
+  }
+}
 
 type CourseVideoPlayerProps = {
   videoUrl: string | null;
@@ -48,6 +100,13 @@ export default function CourseVideoPlayer({
     return <AuthWarning />;
   }
 
+  // NEW: receive courseId from parent
+  // We'll get courseId from props in a follow-up as needed, for now grab from window.location.pathname
+  const courseId = (() => {
+    const match = window.location.pathname.match(/\/enrolled-course\/(\d+)/);
+    return match ? Number(match[1]) : undefined;
+  })();
+
   const handleMarkComplete = async () => {
     if (!user || !videoId) return;
     setSaving(true);
@@ -78,6 +137,10 @@ export default function CourseVideoPlayer({
         description: "Your progress has been saved.",
       });
       setCompleted(true);
+      // --- New: issue certificate if course complete ---
+      if (courseId && user.id) {
+        await issueCertificateOnce({ userId: user.id, courseId, toast });
+      }
       if (onComplete) onComplete();
     } catch (e: any) {
       toast({
