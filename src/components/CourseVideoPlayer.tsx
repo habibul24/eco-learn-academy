@@ -9,6 +9,11 @@ import { useToast } from "@/components/ui/use-toast";
 import MarkCompleteButton from "./video/MarkCompleteButton";
 
 // NEW: Helper to create a certificate if not already present
+function generateCertificateNumber() {
+  // Simple random string—swap with UUID if you want (not required for this fix)
+  return 'CERT-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+}
+
 async function issueCertificateOnce({ userId, courseId, toast }: { userId: string, courseId: number, toast: any }) {
   if (!userId || !courseId) return;
   try {
@@ -28,13 +33,14 @@ async function issueCertificateOnce({ userId, courseId, toast }: { userId: strin
       return;
     }
 
-    // Insert certificate
+    // Insert certificate - supply required fields
     const { error } = await supabase
       .from("certificates")
       .insert({
         user_id: userId,
         course_id: courseId,
-        issued_at: new Date().toISOString()
+        certificate_number: generateCertificateNumber(),
+        issue_date: new Date().toISOString(),
       })
       .select();
 
