@@ -16,13 +16,6 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Preset emails for quick login tests
-  const adminTestEmail = "admin@example.com";
-  const learnerTestEmail = "learner@example.com";
-
-  // For showing which role was last selected
-  const [selectedRole, setSelectedRole] = useState<"admin" | "learner" | null>(null);
-
   const onAuth = async (evt: React.FormEvent) => {
     evt.preventDefault();
     setLoading(true);
@@ -30,7 +23,6 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        // On signup, split name if possible
         const [first_name, ...last] = fullName.split(" ");
         const last_name = last.join(" ");
         const redirectUrl = `${window.location.origin}/auth`;
@@ -67,25 +59,6 @@ export default function Auth() {
     }
   };
 
-  // Instructions for admin testing
-  function roleInstructions() {
-    return (
-      <div className="text-sm text-muted-foreground my-2">
-        <ul className="list-disc list-inside">
-          <li>
-            <span className="font-medium">To test as admin:</span> Sign up or log in with <span className="font-mono text-green-800">{adminTestEmail}</span>.
-          </li>
-          <li>
-            <span className="font-medium">To test as learner:</span> Use <span className="font-mono text-green-800">{learnerTestEmail}</span>.
-          </li>
-          <li>
-            To grant admin rights, add the admin email’s user ID to the <span className="font-mono">user_roles</span> table in Supabase as <span className="font-mono">role = 'admin'</span>.
-          </li>
-        </ul>
-      </div>
-    );
-  }
-
   return (
     <>
       <Navbar />
@@ -94,31 +67,6 @@ export default function Auth() {
           <h1 className="text-2xl font-bold text-green-800">
             {isSignUp ? "Sign Up" : "Login"}
           </h1>
-          {/* Role select buttons */}
-          <div className="flex gap-2 w-full justify-center mb-2">
-            <Button
-              variant={selectedRole === "admin" ? "default" : "secondary"}
-              type="button"
-              onClick={() => {
-                setEmail(adminTestEmail);
-                setSelectedRole("admin");
-              }}
-            >
-              Login as Admin
-            </Button>
-            <Button
-              variant={selectedRole === "learner" ? "default" : "secondary"}
-              type="button"
-              onClick={() => {
-                setEmail(learnerTestEmail);
-                setSelectedRole("learner");
-              }}
-            >
-              Login as Learner
-            </Button>
-          </div>
-          {/* Instructions */}
-          {roleInstructions()}
           <form className="flex flex-col gap-4" onSubmit={onAuth}>
             {isSignUp && (
               <Input
