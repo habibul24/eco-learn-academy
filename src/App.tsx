@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +13,8 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import React from "react";
 import CourseDetail from "./pages/CourseDetail";
 import AdminDashboard from "./pages/AdminDashboard";
+import MyCourses from "./pages/MyCourses";
+import MyCertificates from "./pages/MyCertificates";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,16 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/course/:id" element={<CourseDetail />} />
+          <Route path="/my-courses" element={
+            <ProtectedRoute>
+              <MyCourses />
+            </ProtectedRoute>
+          } />
+          <Route path="/my-certificates" element={
+            <ProtectedRoute>
+              <MyCertificates />
+            </ProtectedRoute>
+          } />
           {/* Admin route */}
           <Route path="/admin" element={
             <ProtectedRoute>
