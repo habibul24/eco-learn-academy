@@ -5,6 +5,9 @@ import Navbar from "@/components/Navbar";
 import CourseVideoPlayer from "@/components/CourseVideoPlayer";
 import CourseContentSidebar from "@/components/CourseContentSidebar";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import { useAuthUser } from "@/hooks/useAuthUser";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -40,6 +43,9 @@ export default function CourseDetail() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuthUser();
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     async function fetchDetails() {
@@ -82,7 +88,21 @@ export default function CourseDetail() {
       setLoading(false);
     }
     fetchDetails();
-  }, [id]);
+
+    // Also check whether the user is already enrolled in this course
+    async function checkEnrollment() {
+      if (user && course) {
+        const { data } = await supabase
+          .from("course_enrollments")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("course_id", course.id)
+          .maybeSingle();
+        setIsEnrolled(!!data);
+      }
+    }
+    checkEnrollment();
+  }, [id, user, course]);
 
   if (loading) {
     return (
@@ -105,6 +125,85 @@ export default function CourseDetail() {
       </div>
     );
   }
+
+  // Payment flows
+  async function handleStripePay() {
+    if (!user) {
+      toast({ title: "Please log in first." });
+      navigate("/auth");
+      return;
+    }
+    setPaying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-pay-course", {
+        body: { course_id: Number(id) },
+      });
+      if (error || !data?.url) {
+        toast({ title: "Stripe payment failed", description: error?.message || "Unable to initiate payment." });
+      } else {
+        window.location.href = data.url; // Stripe will redirect to success/cancel
+      }
+    } catch (err: any) {
+      toast({ title: "Stripe payment error", description: err.message });
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  async function handlePayPalPay() {
+    if (!user) {
+      toast({ title: "Please log in first." });
+      navigate("/auth");
+      return;
+    }
+    setPaying(true);
+    try {
+      // Step 1: Create the PayPal order via edge function
+      const { data, error } = await supabase.functions.invoke("paypal-pay-course", {
+        body: { action: "create", course_id: Number(id) }
+      });
+      if (error || !data?.url) {
+        toast({ title: "PayPal error", description: error?.message || "Unable to start payment." });
+      } else {
+        window.location.href = data.url; // PayPal will redirect on approval
+      }
+    } catch (err: any) {
+      toast({ title: "PayPal payment error", description: err.message });
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  // Optional: detect PayPal payment success/cancel from query string and finalize
+  useEffect(() => {
+    // If user comes back with payment=success and PayPal order id in hash/query, capture
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get("payment");
+    const paypalOrderId = params.get("token"); // PayPal sends ?token=ORDER_ID on success
+    if (paymentStatus === "success" && paypalOrderId && user && !isEnrolled) {
+      (async () => {
+        setPaying(true);
+        try {
+          const { error } = await supabase.functions.invoke("paypal-pay-course", {
+            body: { action: "capture", course_id: Number(id), order_id: paypalOrderId },
+          });
+          if (!error) {
+            toast({ title: "Payment confirmed, enrolled!" });
+            setIsEnrolled(true);
+            navigate("/my-courses");
+          }
+        } catch {}
+        setPaying(false);
+      })();
+    }
+    // ...stripe will auto-redirect after success session to the same page
+    if (paymentStatus === "success" && !isEnrolled) {
+      toast({ title: "Payment successful! Course unlocked." });
+      setIsEnrolled(true);
+      navigate("/my-courses");
+    }
+    // eslint-disable-next-line
+  }, [user, isEnrolled]);
 
   // Prepare meta and parsed description sections
   const priceFormatted = `USD ${course.price ? course.price.toFixed(2) : "0.00"}`;
@@ -165,6 +264,40 @@ export default function CourseDetail() {
                   <li key={i}>{item.replace(/^- /, "")}</li>)
                 }
               </ul>
+            </div>
+          )}
+          {!authLoading && (
+            <div className="mb-6">
+              {isEnrolled ? (
+                <Button variant="secondary" size="lg" className="w-full" disabled>
+                  You are enrolled in this course!
+                </Button>
+              ) : user ? (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="default"
+                    size="lg"
+                    className="w-full"
+                    onClick={handleStripePay}
+                    disabled={paying}
+                  >
+                    {paying ? "Processing..." : "Buy with Stripe"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                    onClick={handlePayPalPay}
+                    disabled={paying}
+                  >
+                    {paying ? "Processing..." : "Buy with PayPal"}
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="default" size="lg" className="w-full" onClick={() => navigate("/auth")}>
+                  Login to purchase this course
+                </Button>
+              )}
             </div>
           )}
         </div>

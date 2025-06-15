@@ -1,1 +1,11 @@
+
 project_id = "wufjtlnxiwipdlqsntqk"
+
+[functions]
+verify_jwt = true
+
+[functions.stripe-pay-course]
+verify_jwt = true
+
+[functions.paypal-pay-course]
+verify_jwt = true
