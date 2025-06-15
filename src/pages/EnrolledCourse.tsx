@@ -62,11 +62,20 @@ export default function EnrolledCourse() {
   }, [videos]);
 
   // Use the new course progress hook
-  const { progress, allWatched } = useCourseProgress({
+  const { progress, allWatched, supabaseError } = useCourseProgress({
     user,
     courseId: course?.id,
     videos,
   });
+
+  if (supabaseError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-red-50">
+        <div className="text-xl font-bold text-red-700 mb-3">Progress Fetch Error</div>
+        <div className="text-red-700 text-base max-w-lg">{supabaseError}</div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

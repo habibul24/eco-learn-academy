@@ -14,10 +14,20 @@ export function useCourseProgress({
 }) {
   const [progress, setProgress] = useState(0);
   const [allWatched, setAllWatched] = useState(false);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
   useEffect(() => {
     // Defensive: do nothing if user or courseId is not valid
     if (!user || !courseId) return;
+
+    // Defensive: check if supabase is really a client
+    if (!supabase || typeof supabase.from !== "function") {
+      console.error("[useCourseProgress] Supabase client invalid!", supabase);
+      setSupabaseError("Supabase client is invalid! Progress cannot be fetched.");
+      setProgress(0);
+      setAllWatched(false);
+      return;
+    }
 
     async function fetchProgress() {
       try {
@@ -31,6 +41,7 @@ export function useCourseProgress({
           console.error("[useCourseProgress] Supabase query error:", error);
           setProgress(0);
           setAllWatched(false);
+          setSupabaseError("Supabase query failed.");
           return;
         }
         // Compute watched set
@@ -40,14 +51,18 @@ export function useCourseProgress({
 
         setProgress(total ? Math.round((completed / total) * 100) : 0);
         setAllWatched(completed === total && total > 0);
+        setSupabaseError(null); // clear error if successful
+        // Debug logging
+        console.log("[useCourseProgress] Progress fetch: watchedIds", watchedIds, "completed", completed, "of", total);
       } catch (err) {
         console.error("[useCourseProgress] Unexpected fetch error:", err);
         setProgress(0);
         setAllWatched(false);
+        setSupabaseError("Unexpected error fetching course progress.");
       }
     }
     fetchProgress();
   }, [user, courseId, JSON.stringify(videos)]);
 
-  return { progress, allWatched };
+  return { progress, allWatched, supabaseError };
 }
