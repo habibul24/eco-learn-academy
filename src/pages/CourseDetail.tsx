@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,11 +137,22 @@ export default function CourseDetail() {
     }
   }, [user, isEnrolled, id, navigate]);
 
-  // Payment Flows (now only trigger on modal payment button click)
+  // Helper to validate the supabase object
+  function checkSupabaseClient() {
+    // It should always have a ".from" property that is a function
+    if (!supabase || typeof supabase.from !== "function") {
+      // eslint-disable-next-line no-console
+      console.error("[FATAL] The imported `supabase` is not a valid Supabase client!", supabase);
+      throw new Error("Invalid Supabase client! Check the import in CourseDetail.tsx and elsewhere in the project.");
+    }
+    // Log the actual class name/type (may be minified in prod)
+    // eslint-disable-next-line no-console
+    console.log("[debug] supabase type:", supabase.constructor?.name);
+  }
+
   async function handleStripePay() {
     setPaying(true);
-    // Debug: Log supabase before using
-    console.log("[debug] handleStripePay supabase is", supabase);
+    checkSupabaseClient();
     try {
       const { data, error } = await supabase.functions.invoke("stripe-pay-course", {
         body: { course_id: Number(id) },
@@ -162,8 +172,7 @@ export default function CourseDetail() {
 
   async function handlePayPalPay() {
     setPaying(true);
-    // Debug: Log supabase before using
-    console.log("[debug] handlePayPalPay supabase is", supabase);
+    checkSupabaseClient();
     try {
       const { data, error } = await supabase.functions.invoke("paypal-pay-course", {
         body: { action: "create", course_id: Number(id) }
