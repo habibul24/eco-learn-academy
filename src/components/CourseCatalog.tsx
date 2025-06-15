@@ -63,7 +63,7 @@ const courses = [
 ];
 
 // Typing for clarity
-interface ActiveCourseType extends (typeof courses)[number] {}
+type ActiveCourseType = (typeof courses)[number];
 
 export default function CourseCatalog() {
   const [activeCourse, setActiveCourse] = useState<ActiveCourseType | null>(null);
@@ -139,3 +139,4 @@ export default function CourseCatalog() {
     </section>
   );
 }
+
