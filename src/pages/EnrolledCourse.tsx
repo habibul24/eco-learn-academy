@@ -1,3 +1,4 @@
+
 import React from "react";
 import Navbar from "@/components/Navbar";
 import CourseContentSidebar from "@/components/CourseContentSidebar";
@@ -32,23 +33,17 @@ export default function EnrolledCourse() {
     setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);
   }, [videos]);
 
-  // Move progress hook below loading/courseId check, only run if loaded and IDs are valid
-  const validCourseId = typeof courseId === "number" && !isNaN(courseId);
-  const courseProgress = (course && validCourseId)
-    ? useCourseProgress({
-        user,
-        courseId: course.id,
-        videos,
-      })
-    : {
-        progress: 0,
-        allWatched: false,
-        supabaseError: null,
-        isLoading: loading
-      };
-
-  // Compute progress/loading state from above
-  const { progress, allWatched, supabaseError, isLoading: progressLoading } = courseProgress;
+  // Always call the hook, pass good defaults if data is not ready yet
+  const {
+    progress,
+    allWatched,
+    supabaseError,
+    isLoading: progressLoading
+  } = useCourseProgress({
+    user,
+    courseId: course?.id, // will be undefined if course is not loaded
+    videos: videos ?? []
+  });
 
   // Handle refresh for progress errors
   const handleProgressRefresh = () => {
