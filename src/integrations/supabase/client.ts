@@ -32,10 +32,7 @@ function createSupabaseClient(): SupabaseClient<Database> {
 // Create the client instance ONCE
 const _supabaseClient = createSupabaseClient();
 
-// Freeze the client to prevent modification
-Object.freeze(_supabaseClient);
-
-// Export the client
+// Export the client (do NOT freeze - Supabase needs to modify internal properties)
 export const supabase: SupabaseClient<Database> = _supabaseClient;
 
 // Runtime validation helper with detailed logging
