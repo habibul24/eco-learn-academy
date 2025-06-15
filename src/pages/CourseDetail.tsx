@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ export default function CourseDetail() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [paying, setPaying] = useState(false);
 
+  // Phase 1: Load course + chapters + videos on mount (or id changes)
   useEffect(() => {
     async function fetchDetails() {
       setLoading(true);
@@ -88,8 +90,10 @@ export default function CourseDetail() {
       setLoading(false);
     }
     fetchDetails();
+  }, [id]);
 
-    // Also check whether the user is already enrolled in this course
+  // Phase 2: Enrollment check - only after both user and course are actually loaded
+  useEffect(() => {
     async function checkEnrollment() {
       if (user && course) {
         const { data } = await supabase
@@ -99,10 +103,12 @@ export default function CourseDetail() {
           .eq("course_id", course.id)
           .maybeSingle();
         setIsEnrolled(!!data);
+      } else {
+        setIsEnrolled(false);
       }
     }
     checkEnrollment();
-  }, [id, user, course]);
+  }, [user, course]);
 
   if (loading) {
     return (
@@ -206,7 +212,7 @@ export default function CourseDetail() {
   }, [user, isEnrolled]);
 
   // Prepare meta and parsed description sections
-  const priceFormatted = `USD ${course.price ? course.price.toFixed(2) : "0.00"}`;
+  const priceFormatted = `HKD ${course.price ? course.price.toFixed(2) : "0.00"}`;
   const COURSE_LEVEL = "Beginner";
   const COURSE_MODE = "Self-paced";
 
