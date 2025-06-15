@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { getYoutubeVideoId } from "@/utils/youtubeUtils";
@@ -46,7 +47,6 @@ export default function CourseVideoPlayer({
     if (!user || !videoId) return;
     setSaving(true);
     try {
-      // Upsert user_progress: set watched true
       const { supabase, validateSupabaseClient } = await import("@/integrations/supabase/client");
       validateSupabaseClient();
       const upsertObj = {
@@ -55,7 +55,7 @@ export default function CourseVideoPlayer({
         watched: true,
         progress_percentage: 100,
       };
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from("user_progress")
         .upsert(upsertObj)
         .select();
@@ -116,9 +116,7 @@ export default function CourseVideoPlayer({
             courseTitle={courseTitle}
             user={user}
             videoDbId={videoId}
-            onComplete={() => {
-              setVideoEnded(true);
-            }}
+            onComplete={() => setVideoEnded(true)}
           />
         ) : (
           <GenericVideoPlayer
@@ -145,3 +143,4 @@ export default function CourseVideoPlayer({
     </div>
   );
 }
+

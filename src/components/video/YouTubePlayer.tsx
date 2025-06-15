@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from "react";
 import { supabase, validateSupabaseClient } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -77,7 +78,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
               // 0: ended
               if (event.data === 0 && !completeMarkRef.current) {
                 completeMarkRef.current = true;
-                if (onComplete) onComplete(); // Now delegates save to outer button
+                if (onComplete) onComplete(); // Mark video as ended for UI
               }
             },
             onError: (err: any) => {
