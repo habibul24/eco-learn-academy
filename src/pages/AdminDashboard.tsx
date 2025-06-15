@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 
 // Only fetch courses, enrollments, completions, and now count non-admin users for stats
-async function fetchAdminStats() {
+async function fetchAdminStatsWithDebug(userId: string | undefined) {
   const [
     { data: courses },
     { data: enrollments },
@@ -19,8 +19,22 @@ async function fetchAdminStats() {
     supabase.from("courses").select("*"),
     supabase.from("course_enrollments").select("*"),
     supabase.from("user_progress").select("*"),
-    supabase.from("user_roles").select("*") // We count 'user' role below
+    supabase.from("user_roles").select("*")
   ]);
+
+  // Console debug - show USER IDs for the admin
+  console.log("---- Supabase Admin Debug ----");
+  console.log("Current Admin UID (auth.uid()):", userId);
+  console.log("user_roles fetched:", userRoles);
+  console.log("course_enrollments fetched:", enrollments);
+
+  // Print all unique user IDs from enrollments
+  const enrollUserIds = (enrollments ?? []).map(enr => enr.user_id);
+  console.log("All enrollment user_ids:", enrollUserIds);
+
+  const rolesUserIds = (userRoles ?? []).map(ur => ur.user_id);
+  console.log("All user_roles user_ids:", rolesUserIds);
+
   // Count only users with role 'user', not 'admin'
   const totalUsers = userRoles ? userRoles.filter(r => r.role === 'user').length : 0;
   return {
@@ -61,38 +75,9 @@ export default function AdminDashboard() {
 
   // 2. Fetch stats for cards/table, only after rolesData confirmed
   const statsQuery = useQuery({
-    queryKey: ["admin-stats"],
-    queryFn: async () => {
-      // Added debug for enrollments fetch
-      const [{ data: courses, error: coursesError }, 
-             { data: enrollments, error: enrollmentsError },
-             { data: completions, error: completionsError },
-             { data: userRoles, error: userRolesError }
-      ] = await Promise.all([
-        supabase.from("courses").select("*"),
-        supabase.from("course_enrollments").select("*"),
-        supabase.from("user_progress").select("*"),
-        supabase.from("user_roles").select("*"),
-      ]);
-      if (coursesError) console.error("Courses error:", coursesError);
-      if (enrollmentsError) console.error("Enrollments error:", enrollmentsError);
-      if (completionsError) console.error("Completions error:", completionsError);
-      if (userRolesError) console.error("UserRoles error:", userRolesError);
-
-      // Log the actual fetched enrollments
-      console.log("Fetched ENROLLMENTS (raw):", enrollments);
-
-      // Count only users with role 'user', not 'admin'
-      const totalUsers = userRoles ? userRoles.filter(r => r.role === 'user').length : 0;
-
-      return {
-        courses: courses ?? [],
-        enrollments: enrollments ?? [],
-        completions: completions ?? [],
-        totalUsers,
-      };
-    },
-    enabled: !!isAdmin, // Only run when isAdmin is true
+    queryKey: ["admin-stats", user?.id], // add user.id to monitor for admin change
+    queryFn: () => fetchAdminStatsWithDebug(user?.id),
+    enabled: !!isAdmin,
   });
 
   React.useEffect(() => {
@@ -153,3 +138,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
