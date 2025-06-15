@@ -34,6 +34,7 @@ export default function Auth() {
             data: {
               first_name,
               last_name,
+              full_name: fullName, // <-- Store full_name!
             }
           }
         });
