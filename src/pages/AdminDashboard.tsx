@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import Navbar from "@/components/Navbar";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import AdminSummaryCards from "@/components/AdminSummaryCards";
@@ -111,6 +112,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-20 pb-10 px-2 md:px-8">
+      <Navbar />
       <div className="max-w-[1400px] mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-green-900">Admin Dashboard</h1>
         <AdminSummaryCards
@@ -138,4 +140,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
