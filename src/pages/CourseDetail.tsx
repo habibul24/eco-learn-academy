@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { useCourseDetailData } from "@/hooks/useCourseDetailData";
 import { useCoursePayment } from "@/hooks/useCoursePayment";
-import CourseMetaInfo from "@/components/CourseMetaInfo";
 import CoursePaymentDialog from "@/components/CoursePaymentDialog";
-import { Progress } from "@/components/ui/progress";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { supabase } from "@/integrations/supabase/client";
+import CourseDetailHeader from "@/components/CourseDetailHeader";
+import CourseProgress from "@/components/CourseProgress";
+import CourseDescriptionSections from "@/components/CourseDescriptionSections";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -161,20 +162,10 @@ export default function CourseDetail() {
       <div className="max-w-7xl w-full mx-auto px-2 md:px-8 flex-1 flex flex-col lg:flex-row gap-10 pt-24 pb-12">
         {/* Left: Main Content */}
         <div className="w-full lg:w-3/5">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-green-900 mb-4">{course.title}</h1>
+          <CourseDetailHeader title={course.title} priceFormatted={priceFormatted} />
           {/* Show progress bar ONLY if enrolled */}
           {isEnrolled && (
-            <div className="mb-4">
-              <div className="text-sm text-green-900 font-semibold mb-1">
-                Course Progress: {progress}%
-              </div>
-              <Progress value={progress} />
-              {allWatched && (
-                <div className="mt-2 text-green-800 font-bold">
-                  Congratulations! You have completed this course and earned a certificate.
-                </div>
-              )}
-            </div>
+            <CourseProgress progress={progress} allWatched={allWatched} />
           )}
           <CourseVideoPlayer
             videoUrl={activeVideoUrl}
@@ -182,24 +173,11 @@ export default function CourseDetail() {
             fallbackImage={DEFAULT_IMAGE}
             videoId={videos.find(v => v.video_url === activeVideoUrl)?.id}
           />
-          <CourseMetaInfo priceFormatted={priceFormatted} />
-          <div className="text-base text-gray-700 mb-5 whitespace-pre-line">{course.description.split("\n\n")[0]}</div>
-          {whoFor.length > 0 && (
-            <div className="mb-5">
-              <h4 className="font-bold text-green-900 mb-1">Who is this course for?</h4>
-              <ul className="list-disc ml-6 text-sm text-gray-800">
-                {whoFor.map((item, i) => <li key={i}>{item.replace(/^- /, "")}</li>)}
-              </ul>
-            </div>
-          )}
-          {objectives.length > 0 && (
-            <div>
-              <h4 className="font-bold text-green-900 mb-1">Learning Objectives</h4>
-              <ul className="list-disc ml-6 text-sm text-gray-800">
-                {objectives.map((item, i) => <li key={i}>{item.replace(/^- /, "")}</li>)}
-              </ul>
-            </div>
-          )}
+          <CourseDescriptionSections
+            description={course.description}
+            whoFor={whoFor}
+            objectives={objectives}
+          />
         </div>
         {/* Right: Sidebar content */}
         <div className="flex-grow max-w-lg w-full">
