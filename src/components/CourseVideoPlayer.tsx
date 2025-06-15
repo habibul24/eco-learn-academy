@@ -1,7 +1,7 @@
-
 import React, { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
+import { useToast } from "@/components/ui/use-toast";
 
 /**
  * Extract YouTube video ID from a YouTube URL (support various url formats)
@@ -41,9 +41,15 @@ export default function CourseVideoPlayer({
   const { user } = useAuthUser();
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
+  const { toast } = useToast();
   const ytVideoId = getYoutubeVideoId(videoUrl ?? "");
   const [playerReady, setPlayerReady] = React.useState(false);
+  // Used to prevent duplicate onComplete upserts
+  const completeMarkRef = useRef(false);
+
+  useEffect(() => {
+    completeMarkRef.current = false;
+  }, [ytVideoId, videoId, user?.id]); // Reset on video/user change
 
   // Load YouTube IFrame API script only if it's a youtube video
   useEffect(() => {
@@ -65,9 +71,7 @@ export default function CourseVideoPlayer({
   useEffect(() => {
     if (!ytVideoId || !user || !videoId) return;
 
-    // YouTube API must be loaded before we can create a player
     const onYouTubeIframeAPIReady = () => {
-      // If new video, remove previous player if exists
       if (playerRef.current && typeof playerRef.current.destroy === "function") {
         playerRef.current.destroy();
       }
@@ -86,17 +90,33 @@ export default function CourseVideoPlayer({
             onReady: () => setPlayerReady(true),
             onStateChange: async (event: any) => {
               // State 0 means ended, see: https://developers.google.com/youtube/iframe_api_reference#onStateChange
-              if (event.data === 0) {
-                // Only mark as watched if 100%, and only once
-                const result = await supabase
+              if (event.data === 0 && !completeMarkRef.current) {
+                completeMarkRef.current = true; // mark as completed to avoid multiple upserts
+                console.log("[VideoPlayer] Video ended, marking watched for uid:", user.id, "videoId:", videoId);
+                const { error, data } = await supabase
                   .from("user_progress")
                   .upsert({
                     user_id: user.id,
                     video_id: videoId,
                     watched: true,
                     progress_percentage: 100,
+                  })
+                  .select();
+                if (error) {
+                  toast({
+                    variant: "destructive",
+                    title: "Error marking video as completed",
+                    description: error.message,
                   });
-                if (onComplete) onComplete();
+                  console.error("[VideoPlayer] Error marking video watched:", error);
+                } else {
+                  toast({
+                    title: "Video marked as watched!",
+                    description: "Your progress has been updated for this video.",
+                  });
+                  console.log("[VideoPlayer] Marked video as watched:", data);
+                  if (onComplete) onComplete();
+                }
               }
             },
           },
@@ -104,22 +124,18 @@ export default function CourseVideoPlayer({
       );
     };
 
-    // If API already loaded
     if ((window as any).YT && (window as any).YT.Player) {
       onYouTubeIframeAPIReady();
     } else {
-      // Wait for YT global to be available
       (window as any).onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
     }
 
     return () => {
-      // Clean player on unmount/video change
       if (playerRef.current && typeof playerRef.current.destroy === "function") {
         playerRef.current.destroy();
         playerRef.current = null;
       }
     };
-    // Re-run if ytVideoId/videoId changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ytVideoId, user, videoId]);
 
