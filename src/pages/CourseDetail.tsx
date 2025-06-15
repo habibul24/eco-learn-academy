@@ -141,6 +141,8 @@ export default function CourseDetail() {
   // Payment Flows (now only trigger on modal payment button click)
   async function handleStripePay() {
     setPaying(true);
+    // Debug: Log supabase before using
+    console.log("[debug] handleStripePay supabase is", supabase);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-pay-course", {
         body: { course_id: Number(id) },
@@ -151,6 +153,7 @@ export default function CourseDetail() {
         window.location.href = data.url;
       }
     } catch (err: any) {
+      console.error("[debug] Stripe payment error", err);
       toast({ title: "Stripe payment error", description: err.message });
     } finally {
       setPaying(false);
@@ -159,6 +162,8 @@ export default function CourseDetail() {
 
   async function handlePayPalPay() {
     setPaying(true);
+    // Debug: Log supabase before using
+    console.log("[debug] handlePayPalPay supabase is", supabase);
     try {
       const { data, error } = await supabase.functions.invoke("paypal-pay-course", {
         body: { action: "create", course_id: Number(id) }
@@ -169,6 +174,7 @@ export default function CourseDetail() {
         window.location.href = data.url;
       }
     } catch (err: any) {
+      console.error("[debug] PayPal payment error", err);
       toast({ title: "PayPal payment error", description: err.message });
     } finally {
       setPaying(false);
@@ -357,4 +363,3 @@ export default function CourseDetail() {
     </div>
   );
 }
-// ... The file is now very long and should be refactored into smaller components!
