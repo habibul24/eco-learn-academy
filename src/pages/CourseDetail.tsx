@@ -37,6 +37,7 @@ type Course = {
 };
 
 export default function CourseDetail() {
+  // -- All hooks must be at the top level! --
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
@@ -48,6 +49,8 @@ export default function CourseDetail() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [paying, setPaying] = useState(false);
 
+  // -- Only non-hook logic below! --
+  // Defensive: all hooks are above
   // Phase 1: Load course + chapters + videos on mount (or id changes)
   useEffect(() => {
     async function fetchDetails() {
@@ -92,7 +95,7 @@ export default function CourseDetail() {
     fetchDetails();
   }, [id]);
 
-  // Phase 2: Enrollment check - only after both user and course are actually loaded
+  // Enrollment check: always after BOTH user and course are loaded
   useEffect(() => {
     async function checkEnrollment() {
       if (user && course) {
@@ -110,27 +113,37 @@ export default function CourseDetail() {
     checkEnrollment();
   }, [user, course]);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="animate-spin mr-3" /> Loading...
-      </div>
-    );
-  }
-
-  if (!course) {
-    return (
-      <div className="flex flex-col items-center mt-16">
-        <div className="text-2xl text-center text-red-700 font-semibold mb-6">Course not found</div>
-        <button
-          className="mt-2 px-4 py-2 rounded bg-green-600 text-white"
-          onClick={() => navigate("/courses")}
-        >
-          Back to Courses
-        </button>
-      </div>
-    );
-  }
+  // Optional: detect PayPal payment success/cancel from query string and finalize
+  useEffect(() => {
+    // Ensure this effect is NOT conditionally run!
+    // If user comes back with payment=success and PayPal order id in hash/query, capture
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get("payment");
+    const paypalOrderId = params.get("token"); // PayPal sends ?token=ORDER_ID on success
+    if (paymentStatus === "success" && paypalOrderId && user && !isEnrolled) {
+      (async () => {
+        setPaying(true);
+        try {
+          const { error } = await supabase.functions.invoke("paypal-pay-course", {
+            body: { action: "capture", course_id: Number(id), order_id: paypalOrderId },
+          });
+          if (!error) {
+            toast({ title: "Payment confirmed, enrolled!" });
+            setIsEnrolled(true);
+            navigate("/my-courses");
+          }
+        } catch {}
+        setPaying(false);
+      })();
+    }
+    // ...stripe will auto-redirect after success session to the same page
+    if (paymentStatus === "success" && !isEnrolled) {
+      toast({ title: "Payment successful! Course unlocked." });
+      setIsEnrolled(true);
+      navigate("/my-courses");
+    }
+    // eslint-disable-next-line
+  }, [user, isEnrolled]);
 
   // Payment flows
   async function handleStripePay() {
@@ -180,42 +193,7 @@ export default function CourseDetail() {
     }
   }
 
-  // Optional: detect PayPal payment success/cancel from query string and finalize
-  useEffect(() => {
-    // If user comes back with payment=success and PayPal order id in hash/query, capture
-    const params = new URLSearchParams(window.location.search);
-    const paymentStatus = params.get("payment");
-    const paypalOrderId = params.get("token"); // PayPal sends ?token=ORDER_ID on success
-    if (paymentStatus === "success" && paypalOrderId && user && !isEnrolled) {
-      (async () => {
-        setPaying(true);
-        try {
-          const { error } = await supabase.functions.invoke("paypal-pay-course", {
-            body: { action: "capture", course_id: Number(id), order_id: paypalOrderId },
-          });
-          if (!error) {
-            toast({ title: "Payment confirmed, enrolled!" });
-            setIsEnrolled(true);
-            navigate("/my-courses");
-          }
-        } catch {}
-        setPaying(false);
-      })();
-    }
-    // ...stripe will auto-redirect after success session to the same page
-    if (paymentStatus === "success" && !isEnrolled) {
-      toast({ title: "Payment successful! Course unlocked." });
-      setIsEnrolled(true);
-      navigate("/my-courses");
-    }
-    // eslint-disable-next-line
-  }, [user, isEnrolled]);
-
-  // Prepare meta and parsed description sections
-  const priceFormatted = `HKD ${course.price ? course.price.toFixed(2) : "0.00"}`;
-  const COURSE_LEVEL = "Beginner";
-  const COURSE_MODE = "Self-paced";
-
+  // Utility: extract sections from course description
   function extractSection(desc: string, title: string) {
     const lines = desc.split("\n");
     const idx = lines.findIndex(line => line.trim().toLowerCase().startsWith(title.toLowerCase()));
@@ -228,6 +206,34 @@ export default function CourseDetail() {
     return section.filter(Boolean);
   }
 
+  // Defensive logging: right here means all hooks have run!
+  // Early returns now are safe.
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="animate-spin mr-3" /> Loading...
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="flex flex-col items-center mt-16">
+        <div className="text-2xl text-center text-red-700 font-semibold mb-6">Course not found</div>
+        <button
+          className="mt-2 px-4 py-2 rounded bg-green-600 text-white"
+          onClick={() => navigate("/courses")}
+        >
+          Back to Courses
+        </button>
+      </div>
+    );
+  }
+
+  // Prepare meta and parsed description sections
+  const priceFormatted = `HKD ${course.price ? course.price.toFixed(2) : "0.00"}`;
+  const COURSE_LEVEL = "Beginner";
+  const COURSE_MODE = "Self-paced";
   const whoFor = extractSection(course.description, "Who is this course for?");
   const objectives = extractSection(course.description, "Learning Objectives");
 
