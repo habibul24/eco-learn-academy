@@ -9,7 +9,8 @@ import { useNavigate } from "react-router-dom";
 
 // No "list_all_users" function in DB, so just return an empty array for users column/stats for now
 async function fetchAdminStats() {
-  // Get all stats: courses, enrollments, completions
+  // Get all stats: courses, enrollments, completions, and users if available
+  // TODO: Replace this when user list is in DB
   const [
     { data: courses },
     { data: enrollments },
@@ -19,9 +20,17 @@ async function fetchAdminStats() {
     supabase.from("course_enrollments").select("*"),
     supabase.from("user_progress").select("*"),
   ]);
-  // 'users' is not implemented, but preserve the API so components don't crash
+  // Try to fetch users table, fallback empty:
+  let users = [];
+  try {
+    const { data: usersData } = await supabase.rpc("list_all_users"); // Only works if function exists
+    if (usersData) users = usersData;
+  } catch {
+    // fallback: no users table
+    users = [];
+  }
   return {
-    users: [],
+    users,
     courses: courses ?? [],
     enrollments: enrollments ?? [],
     completions: completions ?? [],
@@ -63,7 +72,6 @@ export default function AdminDashboard() {
     return <div className="min-h-screen flex items-center justify-center">Loading Admin Dashboard...</div>;
   }
 
-  // Always ensure fallback to non-null arrays and defined structure
   const { users = [], courses = [], enrollments = [], completions = [] } = statsQuery.data || {};
 
   return (
