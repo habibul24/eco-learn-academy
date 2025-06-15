@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 type Chapter = {
   id: number;
   title: string;
+  order_index: number; // FIX: Add order_index property
   description?: string | null;
 };
 
