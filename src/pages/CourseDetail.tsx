@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import CourseDetailHeader from "@/components/CourseDetailHeader";
 import CourseProgress from "@/components/CourseProgress";
 import CourseDescriptionSections from "@/components/CourseDescriptionSections";
+import { sendEmail } from "@/utils/sendEmail";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -37,6 +38,10 @@ export default function CourseDetail() {
   // Progress calculation logic — ensure hooks are defined top-level
   const [progress, setProgress] = React.useState(0);
   const [allWatched, setAllWatched] = React.useState(false);
+  
+  // Add a Ref to avoid double-email
+  const [sentEnrollmentEmail, setSentEnrollmentEmail] = React.useState(false);
+  const [sentCertificateEmail, setSentCertificateEmail] = React.useState(false);
 
   // If enrolled, redirect to EnrolledCourse
   React.useEffect(() => {
@@ -57,41 +62,41 @@ export default function CourseDetail() {
     const paymentStatus = params.get("payment");
     const stripeSessionId = params.get("session_id");
     const paypalOrderId = params.get("token");
-    if (paymentStatus === "success" && paypalOrderId && user && !isEnrolled) {
+    if (paymentStatus === "success" && (paypalOrderId || stripeSessionId) && user && !isEnrolled && !sentEnrollmentEmail) {
       (async () => {
         payment.setPaying(true);
         try {
-          const { error } = await (window as any).supabase.functions.invoke("paypal-pay-course", {
-            body: { action: "capture", course_id: course.id, order_id: paypalOrderId },
-          });
+          let enrollResult;
+          if (paypalOrderId) {
+            enrollResult = await (window as any).supabase.functions.invoke("paypal-pay-course", {
+              body: { action: "capture", course_id: course.id, order_id: paypalOrderId },
+            });
+          } else if (stripeSessionId) {
+            enrollResult = await (window as any).supabase.functions.invoke("stripe-enroll-course", {
+              body: { course_id: course.id, stripe_session_id: stripeSessionId },
+            });
+          }
+          const { error } = enrollResult || {};
           if (!error) {
             toast({ title: "Payment confirmed, enrolled!" });
+            // Send Enrollment Email
+            try {
+              await sendEmail({
+                event: "enrollment",
+                to: user.email,
+                userName: user.user_metadata?.full_name || "",
+                courseTitle: course.title,
+              });
+              setSentEnrollmentEmail(true);
+            } catch (e: any) {
+              console.error("sendEmail enrollment error:", e);
+            }
             navigate("/my-courses");
           } else {
-            toast({ title: "PayPal payment error", description: error.message || "Unable to confirm payment." });
+            toast({ title: "Payment error", description: error.message || "Unable to confirm payment." });
           }
         } catch (err: any) {
-          toast({ title: "PayPal capture error", description: err.message });
-        }
-        payment.setPaying(false);
-      })();
-    }
-    // Handle Stripe return
-    if (paymentStatus === "success" && stripeSessionId && user && !isEnrolled) {
-      (async () => {
-        payment.setPaying(true);
-        try {
-          const { error } = await (window as any).supabase.functions.invoke("stripe-enroll-course", {
-            body: { course_id: course.id, stripe_session_id: stripeSessionId },
-          });
-          if (!error) {
-            toast({ title: "Stripe payment confirmed, enrolled!" });
-            navigate("/my-courses");
-          } else {
-            toast({ title: "Stripe payment error", description: error.message || "Unable to confirm payment." });
-          }
-        } catch (err: any) {
-          toast({ title: "Stripe enrollment error", description: err.message });
+          toast({ title: "Payment capture error", description: err.message });
         }
         payment.setPaying(false);
       })();
@@ -101,7 +106,7 @@ export default function CourseDetail() {
       toast({ title: "Payment successful! Course unlocked." });
       navigate("/my-courses");
     }
-  }, [user, isEnrolled, course, navigate, payment]);
+  }, [user, isEnrolled, course, navigate, payment, sentEnrollmentEmail]);
 
   React.useEffect(() => {
     async function fetchProgress() {
@@ -117,7 +122,7 @@ export default function CourseDetail() {
       const pct = total ? Math.round((completed / total) * 100) : 0;
       setProgress(pct);
       setAllWatched(completed === total && total > 0);
-      if (completed === total && total > 0 && user) {
+      if (completed === total && total > 0 && user && !sentCertificateEmail) {
         const certRes = await supabase
           .from("certificates")
           .select("*")
@@ -125,16 +130,31 @@ export default function CourseDetail() {
           .eq("course_id", course.id);
         if (!certRes.data?.length) {
           const certNumber = `CERT-${Date.now()}-${user.id.slice(-6)}`;
-          await supabase.from("certificates").insert({
+          const { error } = await supabase.from("certificates").insert({
             user_id: user.id,
             course_id: course.id,
             certificate_number: certNumber,
           });
+          if (!error) {
+            // Send Certificate Email
+            try {
+              await sendEmail({
+                event: "certificate",
+                to: user.email,
+                userName: user.user_metadata?.full_name || user.email || "",
+                courseTitle: course.title,
+                certificateLink: `${window.location.origin}/my-certificates`,
+              });
+              setSentCertificateEmail(true);
+            } catch (e: any) {
+              console.error("sendEmail certificate error:", e);
+            }
+          }
         }
       }
     }
     fetchProgress();
-  }, [user, course, videos]);
+  }, [user, course, videos, sentCertificateEmail]);
 
   if (loading) {
     return (

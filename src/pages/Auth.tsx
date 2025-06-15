@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import Navbar from "@/components/Navbar";
+import { sendEmail } from "@/utils/sendEmail";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -41,6 +41,16 @@ export default function Auth() {
           setError(error.message);
           toast({ title: "Signup Failed", description: error.message });
         } else {
+          // Send Welcome Email
+          try {
+            await sendEmail({
+              event: "welcome",
+              to: email,
+              userName: fullName,
+            });
+          } catch (e: any) {
+            console.error("sendEmail welcome error:", e);
+          }
           toast({ title: "Signup successful!", description: "Check your email for confirmation." });
           setIsSignUp(false);
         }

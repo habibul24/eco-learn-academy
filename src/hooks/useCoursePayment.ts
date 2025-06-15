@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { sendEmail } from "@/utils/sendEmail";
 
 // Runtime supabase client integrity check
 if (!supabase || typeof supabase.from !== "function") {
@@ -56,6 +57,7 @@ export function useCoursePayment(courseId: number, user: any, isEnrolled: boolea
           description: error?.message || "Unable to initiate payment.",
         });
       } else {
+        // We can't send the enrollment email until after payment callback, so do it in payment callback on CourseDetail or EnrolledCourse page.
         window.location.href = data.url;
       }
     } catch (err: any) {
@@ -78,6 +80,7 @@ export function useCoursePayment(courseId: number, user: any, isEnrolled: boolea
           description: error?.message || "Unable to start payment.",
         });
       } else {
+        // We can't send the enrollment email until after payment callback, so do it in payment callback on CourseDetail or EnrolledCourse page.
         window.location.href = data.url;
       }
     } catch (err: any) {
