@@ -3,12 +3,15 @@ import CourseCard from "@/components/CourseCard";
 import { Users, CheckCircle, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthUser } from "@/hooks/useAuthUser";
 
 const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=620&q=80";
 
 export default function Index() {
   const [featuredCourse, setFeaturedCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [enrolled, setEnrolled] = useState<boolean>(false);
+  const { user, loading: userLoading } = useAuthUser();
 
   useEffect(() => {
     // Debugging: Ensure supabase is available
@@ -22,12 +25,13 @@ export default function Index() {
         }
         if (data) {
           setFeaturedCourse({
+            id: data.id, // keep the id so we can check enrollment
             image: DEFAULT_COURSE_IMAGE,
             title: data.title,
             description: (data.description ?? "").slice(0, 100), // pass description (truncated if needed)
             price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
             onView: () => window.location.href = `/course/${data.id}`,
-            // Do NOT pass enrolled here – it's a featured card, not user-context!
+            // Do NOT pass enrolled here yet
           });
         }
       } catch (e) {
@@ -37,6 +41,25 @@ export default function Index() {
     }
     fetchFeaturedCourse();
   }, []);
+
+  // Check enrollment when featuredCourse and user are available
+  useEffect(() => {
+    async function checkEnrollment() {
+      if (featuredCourse && featuredCourse.id && user) {
+        const { data: enrollData } = await supabase
+          .from("course_enrollments")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("course_id", featuredCourse.id)
+          .eq("status", "active")
+          .maybeSingle();
+        setEnrolled(!!enrollData);
+      } else {
+        setEnrolled(false);
+      }
+    }
+    checkEnrollment();
+  }, [featuredCourse, user]);
 
   return (
     <div className="w-full min-h-screen flex flex-col bg-[#FCFDF7]">
@@ -64,10 +87,17 @@ export default function Index() {
         <h2 className="text-2xl font-semibold text-white mb-8">Featured Courses</h2>
         <div className="w-full flex justify-center">
           <div className="max-w-xs">
-            {loading ? (
+            {loading || userLoading ? (
               <div className="text-white">Loading...</div>
             ) : featuredCourse ? (
-              <CourseCard {...featuredCourse} />
+              <CourseCard
+                image={featuredCourse.image}
+                title={featuredCourse.title}
+                description={featuredCourse.description}
+                price={featuredCourse.price}
+                onView={featuredCourse.onView}
+                enrolled={enrolled}
+              />
             ) : (
               <div className="text-white">No featured course available.</div>
             )}
