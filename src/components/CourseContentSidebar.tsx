@@ -33,19 +33,32 @@ export default function CourseContentSidebar({
   activeVideoUrl,
   setActiveVideoUrl,
 }: Props) {
+  // Find the very first video (lowest chapter order_index, then lowest video id)
+  let firstVideoId: number | null = null;
+  let sortedChapters = chapters.slice().sort((a, b) => a.order_index - b.order_index);
+  for (const chapter of sortedChapters) {
+    const chapterVideos = videos.filter(v => v.chapter_id === chapter.id);
+    if (chapterVideos.length > 0) {
+      // Get the video with the lowest id in this chapter (if multiple videos per chapter)
+      chapterVideos.sort((a, b) => a.id - b.id);
+      firstVideoId = chapterVideos[0].id;
+      break;
+    }
+  }
+
   return (
     <div className="bg-white border rounded-xl shadow p-6 mb-5">
       <strong className="block text-green-900 text-lg mb-3">Course content</strong>
       <Accordion type="single" collapsible defaultValue={String(chapters[0]?.id)}>
-        {chapters.map((chapter) => {
+        {sortedChapters.map((chapter) => {
           const vids = videos.filter(v => v.chapter_id === chapter.id);
           return (
             <AccordionItem key={chapter.id} value={String(chapter.id)}>
               <AccordionTrigger className="text-green-800 font-medium">{chapter.title}</AccordionTrigger>
               <AccordionContent className="pb-2">
                 <ul>
-                  {vids.map((video, idx) => {
-                    const isFirst = video.video_url === firstVideoUrl;
+                  {vids.map((video) => {
+                    const isFirst = video.id === firstVideoId;
                     const isActive = activeVideoUrl === video.video_url;
                     return (
                       <li
