@@ -1,7 +1,7 @@
 
 import Navbar from "@/components/Navbar";
 import React from "react";
-// Placeholder! Replace with Supabase Auth UI when connected.
+
 export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white w-full">
@@ -23,3 +23,4 @@ export default function Login() {
     </div>
   );
 }
+

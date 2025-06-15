@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
+import Navbar from "@/components/Navbar";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -14,6 +15,13 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Preset emails for quick login tests
+  const adminTestEmail = "admin@example.com";
+  const learnerTestEmail = "learner@example.com";
+
+  // For showing which role was last selected
+  const [selectedRole, setSelectedRole] = useState<"admin" | "learner" | null>(null);
 
   const onAuth = async (evt: React.FormEvent) => {
     evt.preventDefault();
@@ -59,49 +67,98 @@ export default function Auth() {
     }
   };
 
+  // Instructions for admin testing
+  function roleInstructions() {
+    return (
+      <div className="text-sm text-muted-foreground my-2">
+        <ul className="list-disc list-inside">
+          <li>
+            <span className="font-medium">To test as admin:</span> Sign up or log in with <span className="font-mono text-green-800">{adminTestEmail}</span>.
+          </li>
+          <li>
+            <span className="font-medium">To test as learner:</span> Use <span className="font-mono text-green-800">{learnerTestEmail}</span>.
+          </li>
+          <li>
+            To grant admin rights, add the admin email’s user ID to the <span className="font-mono">user_roles</span> table in Supabase as <span className="font-mono">role = 'admin'</span>.
+          </li>
+        </ul>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-white">
-      <div className="bg-white rounded-xl shadow-lg px-10 py-8 w-full max-w-md flex flex-col gap-6">
-        <h1 className="text-2xl font-bold text-green-800">{isSignUp ? "Sign Up" : "Login"}</h1>
-        <form className="flex flex-col gap-4" onSubmit={onAuth}>
-          {isSignUp && (
+    <>
+      <Navbar />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-white">
+        <div className="bg-white rounded-xl shadow-lg px-10 py-8 w-full max-w-md flex flex-col gap-6">
+          <h1 className="text-2xl font-bold text-green-800">
+            {isSignUp ? "Sign Up" : "Login"}
+          </h1>
+          {/* Role select buttons */}
+          <div className="flex gap-2 w-full justify-center mb-2">
+            <Button
+              variant={selectedRole === "admin" ? "default" : "secondary"}
+              type="button"
+              onClick={() => {
+                setEmail(adminTestEmail);
+                setSelectedRole("admin");
+              }}
+            >
+              Login as Admin
+            </Button>
+            <Button
+              variant={selectedRole === "learner" ? "default" : "secondary"}
+              type="button"
+              onClick={() => {
+                setEmail(learnerTestEmail);
+                setSelectedRole("learner");
+              }}
+            >
+              Login as Learner
+            </Button>
+          </div>
+          {/* Instructions */}
+          {roleInstructions()}
+          <form className="flex flex-col gap-4" onSubmit={onAuth}>
+            {isSignUp && (
+              <Input
+                autoFocus
+                placeholder="Full Name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+                disabled={loading}
+              />
+            )}
             <Input
-              autoFocus
-              placeholder="Full Name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Email Address"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               required
               disabled={loading}
             />
-          )}
-          <Input
-            placeholder="Email Address"
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            disabled={loading}
-          />
-          <Input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            disabled={loading}
-          />
-          {error && <div className="text-red-600">{error}</div>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Loading..." : (isSignUp ? "Create Account" : "Login")}
-          </Button>
-        </form>
-        <div className="text-center">
-          {isSignUp
-            ? <>Already have an account? <button className="text-green-600 underline" onClick={() => setIsSignUp(false)}>Log in</button></>
-            : <>Don't have an account? <button className="text-green-600 underline" onClick={() => setIsSignUp(true)}>Sign up</button></>
-          }
+            <Input
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
+            {error && <div className="text-red-600">{error}</div>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Loading..." : (isSignUp ? "Create Account" : "Login")}
+            </Button>
+          </form>
+          <div className="text-center">
+            {isSignUp
+              ? <>Already have an account? <button className="text-green-600 underline" onClick={() => setIsSignUp(false)}>Log in</button></>
+              : <>Don't have an account? <button className="text-green-600 underline" onClick={() => setIsSignUp(true)}>Sign up</button></>
+            }
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
