@@ -12,6 +12,7 @@ import {
   Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { SupabaseClient } from '@supabase/supabase-js';
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -55,7 +56,24 @@ export default function CourseDetail() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"paypal" | "stripe">("paypal");
 
+  // Defensive: Stronger check for real Supabase client at runtime
+  function checkSupabaseClient() {
+    // Defensive typeof and instance checks
+    if (!supabase || typeof supabase.from !== "function" || !(supabase instanceof SupabaseClient)) {
+      // eslint-disable-next-line no-console
+      console.error("[FATAL] The imported `supabase` is NOT a valid Supabase client instance!", { supabase, type: typeof supabase, proto: Object.getPrototypeOf(supabase), keys: Object.keys(supabase) });
+      throw new Error("Invalid Supabase client! Check all imports for 'supabase' and ensure no code shadows, re-exports or assigns it from anywhere else except '@/integrations/supabase/client'.");
+    }
+    // Extra debug
+    // eslint-disable-next-line no-console
+    console.log("[debug] Verified supabase client, class:", supabase.constructor?.name, "is instance:", supabase instanceof SupabaseClient);
+  }
+
+  // Re-run strong check EVERY time you use supabase  
+  useEffect(() => { checkSupabaseClient(); }, []);
+
   useEffect(() => {
+    checkSupabaseClient();
     async function fetchDetails() {
       setLoading(true);
       const courseId = Number(id);
@@ -90,6 +108,7 @@ export default function CourseDetail() {
   }, [id]);
 
   useEffect(() => {
+    checkSupabaseClient();
     async function checkEnrollment() {
       if (user && course) {
         const { data } = await supabase
@@ -136,59 +155,6 @@ export default function CourseDetail() {
       navigate("/my-courses");
     }
   }, [user, isEnrolled, id, navigate]);
-
-  // Helper to validate the supabase object
-  function checkSupabaseClient() {
-    // It should always have a ".from" property that is a function
-    if (!supabase || typeof supabase.from !== "function") {
-      // eslint-disable-next-line no-console
-      console.error("[FATAL] The imported `supabase` is not a valid Supabase client!", supabase);
-      throw new Error("Invalid Supabase client! Check the import in CourseDetail.tsx and elsewhere in the project.");
-    }
-    // Log the actual class name/type (may be minified in prod)
-    // eslint-disable-next-line no-console
-    console.log("[debug] supabase type:", supabase.constructor?.name);
-  }
-
-  async function handleStripePay() {
-    setPaying(true);
-    checkSupabaseClient();
-    try {
-      const { data, error } = await supabase.functions.invoke("stripe-pay-course", {
-        body: { course_id: Number(id) },
-      });
-      if (error || !data?.url) {
-        toast({ title: "Stripe payment failed", description: error?.message || "Unable to initiate payment." });
-      } else {
-        window.location.href = data.url;
-      }
-    } catch (err: any) {
-      console.error("[debug] Stripe payment error", err);
-      toast({ title: "Stripe payment error", description: err.message });
-    } finally {
-      setPaying(false);
-    }
-  }
-
-  async function handlePayPalPay() {
-    setPaying(true);
-    checkSupabaseClient();
-    try {
-      const { data, error } = await supabase.functions.invoke("paypal-pay-course", {
-        body: { action: "create", course_id: Number(id) }
-      });
-      if (error || !data?.url) {
-        toast({ title: "PayPal error", description: error?.message || "Unable to start payment." });
-      } else {
-        window.location.href = data.url;
-      }
-    } catch (err: any) {
-      console.error("[debug] PayPal payment error", err);
-      toast({ title: "PayPal payment error", description: err.message });
-    } finally {
-      setPaying(false);
-    }
-  }
 
   function startPurchase() {
     if (!user) {
