@@ -7,22 +7,26 @@ import AdminSearchTable from "@/components/AdminSearchTable";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useNavigate } from "react-router-dom";
 
-// Only fetch courses, enrollments, and completions for stats
+// Only fetch courses, enrollments, completions, and now count non-admin users for stats
 async function fetchAdminStats() {
   const [
     { data: courses },
     { data: enrollments },
     { data: completions },
+    { data: userRoles }
   ] = await Promise.all([
     supabase.from("courses").select("*"),
     supabase.from("course_enrollments").select("*"),
     supabase.from("user_progress").select("*"),
+    supabase.from("user_roles").select("*") // We count 'user' role below
   ]);
+  // Count only users with role 'user', not 'admin'
+  const totalUsers = userRoles ? userRoles.filter(r => r.role === 'user').length : 0;
   return {
     courses: courses ?? [],
     enrollments: enrollments ?? [],
     completions: completions ?? [],
-    // users: N/A
+    totalUsers
   };
 }
 
@@ -61,20 +65,18 @@ export default function AdminDashboard() {
     return <div className="min-h-screen flex items-center justify-center">Loading Admin Dashboard...</div>;
   }
 
-  const { courses = [], enrollments = [], completions = [] } = statsQuery.data || {};
+  const { courses = [], enrollments = [], completions = [], totalUsers = 0 } = statsQuery.data || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-20 pb-10 px-2 md:px-8">
       <div className="max-w-[1400px] mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-green-900">Admin Dashboard</h1>
-        {statsQuery.data && (
-          <AdminSummaryCards
-            totalUsers={null} 
-            totalCourses={courses.length}
-            totalEnrollments={enrollments.length}
-            completions={completions}
-          />
-        )}
+        <AdminSummaryCards
+          totalUsers={totalUsers}
+          totalCourses={courses.length}
+          totalEnrollments={enrollments.length}
+          completions={completions}
+        />
         <div className="mt-10 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <h2 className="text-xl font-semibold text-green-800">All Courses & Enrollments</h2>
           <input
@@ -86,7 +88,7 @@ export default function AdminDashboard() {
         </div>
         <AdminSearchTable
           search={search}
-          users={[]} // Empty, no user list available
+          users={[]} // Not fetching user data, only counting users now
           courses={courses}
           enrollments={enrollments}
         />
