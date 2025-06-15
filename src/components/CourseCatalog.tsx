@@ -1,7 +1,7 @@
+
 import { useState, useEffect } from "react";
 import CourseCard from "./CourseCard";
-import { Dialog } from "@/components/ui/dialog";
-import { BookOpen, User } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
@@ -15,18 +15,9 @@ type CourseType = {
   price: number;
 };
 
-type ActiveCourseType = CourseType & {
-  image: string;
-  instructor: string;
-  enrolled: number;
-  nextRun: string;
-  curriculum: string[];
-};
-
 export default function CourseCatalog() {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<CourseType[]>([]);
-  const [activeCourse, setActiveCourse] = useState<ActiveCourseType | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,9 +51,7 @@ export default function CourseCatalog() {
               key={course.id}
               image={DEFAULT_COURSE_IMAGE}
               title={course.title}
-              instructor="Sustainable Team"
-              enrolled={125}
-              nextRun="Jul 6"
+              description={course.description || ""}
               price={course.price ? `USD ${(course.price as number).toFixed(2)}` : "USD 0.00"}
               onView={() => handleViewCourse(course)}
             />
