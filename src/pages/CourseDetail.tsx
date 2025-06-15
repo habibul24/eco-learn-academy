@@ -162,18 +162,20 @@ export default function CourseDetail() {
         {/* Left: Main Content */}
         <div className="w-full lg:w-3/5">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-green-900 mb-4">{course.title}</h1>
-          {/* Show progress bar */}
-          <div className="mb-4">
-            <div className="text-sm text-green-900 font-semibold mb-1">
-              Course Progress: {progress}%
-            </div>
-            <Progress value={progress} />
-            {allWatched && (
-              <div className="mt-2 text-green-800 font-bold">
-                Congratulations! You have completed this course and earned a certificate.
+          {/* Show progress bar ONLY if enrolled */}
+          {isEnrolled && (
+            <div className="mb-4">
+              <div className="text-sm text-green-900 font-semibold mb-1">
+                Course Progress: {progress}%
               </div>
-            )}
-          </div>
+              <Progress value={progress} />
+              {allWatched && (
+                <div className="mt-2 text-green-800 font-bold">
+                  Congratulations! You have completed this course and earned a certificate.
+                </div>
+              )}
+            </div>
+          )}
           <CourseVideoPlayer
             videoUrl={activeVideoUrl}
             courseTitle={course.title}
