@@ -70,7 +70,7 @@ export default serve(async (req) => {
     const { subject, html } = renderEmailBody(payload);
 
     const response = await resend.emails.send({
-      from: "Learn Online <no-reply@resend.dev>",
+      from: "hello@greendatabiz.com", // <-- UPDATED HERE
       to: [payload.to],
       subject,
       html,
