@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Youtube } from "lucide-react";
@@ -97,7 +96,8 @@ export default function CourseContentSidebar({
           );
         })}
       </Accordion>
-      <Button className="w-full bg-yellow-400 hover:bg-yellow-500 text-green-900 font-semibold text-lg mt-6 transition-colors rounded shadow">
+      {/* Remove the custom class and just use the yellow default Button */}
+      <Button className="w-full font-semibold text-lg mt-6 transition-colors rounded shadow">
         Buy Course
       </Button>
     </div>
