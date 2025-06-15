@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,18 +44,22 @@ export default function CourseDetail() {
   useEffect(() => {
     async function fetchDetails() {
       setLoading(true);
+
+      // Parse id to number
+      const courseId = Number(id);
+
       // Fetch course info
       const { data: courseData } = await supabase
         .from("courses")
         .select("*")
-        .eq("id", id)
+        .eq("id", courseId)
         .maybeSingle();
 
       // Fetch chapters
       const { data: chaptersData } = await supabase
         .from("chapters")
         .select("*")
-        .eq("course_id", id)
+        .eq("course_id", courseId)
         .order("order_index");
 
       // Fetch videos for all chapters
@@ -102,18 +105,15 @@ export default function CourseDetail() {
 
   // Prepare meta and parsed description sections
   const priceFormatted = `USD ${course.price ? course.price.toFixed(2) : "0.00"}`;
-  // The example image includes hardcoded fields for level etc.
   const COURSE_LEVEL = "Beginner";
   const COURSE_MODE = "Self-paced";
 
-  // Parse sections from the course description
   function extractSection(desc: string, title: string) {
     const lines = desc.split("\n");
     const idx = lines.findIndex(line => line.trim().toLowerCase().startsWith(title.toLowerCase()));
     if (idx === -1) return [];
     const section: string[] = [];
     for (let i = idx + 1; i < lines.length; i++) {
-      // stop at next section or a blank line
       if (/^[A-Za-z\s]+:?$/.test(lines[i]) && i !== idx + 1) break;
       section.push(lines[i].replace(/^-\s?/, "").trim());
     }
