@@ -42,6 +42,7 @@ export default function CourseDetail() {
   // Add a Ref to avoid double-email
   const [sentEnrollmentEmail, setSentEnrollmentEmail] = React.useState(false);
   const [sentCertificateEmail, setSentCertificateEmail] = React.useState(false);
+  const [userRoles, setUserRoles] = React.useState<string[]>([]); // <-- New: For role checks
 
   // If enrolled, redirect to EnrolledCourse
   React.useEffect(() => {
@@ -156,6 +157,25 @@ export default function CourseDetail() {
     fetchProgress();
   }, [user, course, videos, sentCertificateEmail]);
 
+  React.useEffect(() => {
+    // Fetch user roles for "Buy Course" button display logic
+    async function fetchRoles() {
+      if (user?.id) {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        setUserRoles(data ? data.map((r: any) => r.role) : []);
+      } else {
+        setUserRoles([]);
+      }
+    }
+    fetchRoles();
+  }, [user]);
+
+  const isAdmin = userRoles.includes("admin");
+  const isLearner = userRoles.includes("user") && !isAdmin;
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -190,8 +210,6 @@ export default function CourseDetail() {
         {/* Left: Main Content */}
         <div className="w-full lg:w-3/5">
           <CourseDetailHeader title={course.title} priceFormatted={priceFormatted} />
-          {/* Show progress bar ONLY if enrolled */}
-          {/* Removed, handled in enrolled view */}
           <CourseVideoPlayer
             videoUrl={activeVideoUrl}
             courseTitle={course.title}
@@ -215,8 +233,20 @@ export default function CourseDetail() {
               setActiveVideoUrl={setActiveVideoUrl}
               isEnrolled={isEnrolled}
               paying={false}
-              onBuyCourse={() => {}}
+              onBuyCourse={() => {}} // not used in current UI
             />
+            {/* Show buy button only for learner, not admin, not enrolled, not loading */}
+            {!isEnrolled && user && isLearner && (
+              <div className="mt-8 flex justify-center">
+                <Button
+                  className="w-full text-lg font-bold py-3"
+                  onClick={payment.startPurchase}
+                  data-testid="buy-course-btn"
+                >
+                  Buy This Course
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
