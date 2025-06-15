@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import CourseCard from "./CourseCard";
 import { Dialog } from "@/components/ui/dialog";
 import { BookOpen, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -24,6 +24,7 @@ type ActiveCourseType = CourseType & {
 };
 
 export default function CourseCatalog() {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [activeCourse, setActiveCourse] = useState<ActiveCourseType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,22 +38,8 @@ export default function CourseCatalog() {
     fetchCourses();
   }, []);
 
-  const handleViewCourse = async (course: CourseType) => {
-    // Fetch chapters as "curriculum"
-    const { data: chaptersData } = await supabase
-      .from("chapters")
-      .select("title")
-      .eq("course_id", course.id)
-      .order("order_index");
-    // Build "active" course props for the dialog
-    setActiveCourse({
-      ...course,
-      image: DEFAULT_COURSE_IMAGE,
-      instructor: "Sustainable Team",
-      enrolled: 125,
-      nextRun: "Jul 6",
-      curriculum: chaptersData ? chaptersData.map((c) => c.title) : [],
-    });
+  const handleViewCourse = (course: CourseType) => {
+    navigate(`/course/${course.id}`);
   };
 
   return (
@@ -76,61 +63,11 @@ export default function CourseCatalog() {
               instructor="Sustainable Team"
               enrolled={125}
               nextRun="Jul 6"
-              price={course.price ? `USD ${parseFloat(course.price as any).toFixed(2)}` : "USD 0.00"}
+              price={course.price ? `USD ${(course.price as number).toFixed(2)}` : "USD 0.00"}
               onView={() => handleViewCourse(course)}
             />
           ))}
         </div>
-      )}
-
-      {activeCourse && (
-        <Dialog open={!!activeCourse} onOpenChange={() => setActiveCourse(null)}>
-          <div className="fixed inset-0 bg-black/20 z-[100][100] flex justify-center items-center">
-            <div className="bg-white dark:bg-background rounded-xl shadow-xl w-full max-w-lg p-8 relative">
-              <button
-                className="absolute top-4 right-4 text-gray-400 hover:text-green-600"
-                aria-label="Close"
-                onClick={() => setActiveCourse(null)}
-              >
-                &times;
-              </button>
-              <div className="flex gap-6 mb-4">
-                <img
-                  src={activeCourse.image}
-                  alt={activeCourse.title}
-                  className="rounded-lg w-28 h-28 object-cover"
-                />
-                <div>
-                  <h3 className="font-bold text-2xl text-green-900">{activeCourse.title}</h3>
-                  <div className="flex items-center gap-2 mt-1 text-muted-foreground text-sm">
-                    <User size={16} className="text-green-600" />
-                    {activeCourse.instructor}
-                  </div>
-                </div>
-              </div>
-              <p className="text-lg mb-2">{activeCourse.description}</p>
-              <div>
-                <h4 className="font-semibold mb-2">Curriculum</h4>
-                <ul className="list-disc list-inside text-sm pl-2 mb-4">
-                  {activeCourse.curriculum.map((topic, idx) => (
-                    <li key={idx}>{topic}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex justify-between items-end">
-                <span className="font-bold text-green-700 text-2xl">
-                  {activeCourse.price ? `USD ${parseFloat(activeCourse.price as any).toFixed(2)}` : "USD 0.00"}
-                </span>
-                <button
-                  className="bg-green-600 text-white rounded px-8 py-2 text-base font-semibold hover:bg-green-800 transition pulse"
-                  onClick={() => alert("Connect Supabase & Stripe to enable checkout!")}
-                >
-                  Purchase Course
-                </button>
-              </div>
-            </div>
-          </div>
-        </Dialog>
       )}
     </section>
   );

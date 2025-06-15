@@ -1,6 +1,6 @@
-
 import { Calendar, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface CourseCardProps {
   image: string;
@@ -21,8 +21,16 @@ export default function CourseCard({
   price,
   onView,
 }: CourseCardProps) {
+  const navigate = useNavigate();
+
   return (
-    <div className="bg-white dark:bg-background border border-border rounded-xl shadow-lg overflow-hidden flex flex-col hover:scale-105 transition-transform duration-200 cursor-pointer group">
+    <div
+      className="bg-white dark:bg-background border border-border rounded-xl shadow-lg overflow-hidden flex flex-col hover:scale-105 transition-transform duration-200 cursor-pointer group"
+      onClick={onView ? onView : undefined}
+      tabIndex={0}
+      // Make the entire card clickable, but also handle click on "View Course"
+      role="button"
+    >
       <div className="h-40 w-full overflow-hidden">
         <img
           src={image}
@@ -44,7 +52,15 @@ export default function CourseCard({
         <div className="mt-auto flex justify-between items-end">
           <span className="font-semibold text-green-700 text-lg">{price}</span>
           <button
-            onClick={onView}
+            onClick={e => {
+              e.stopPropagation();
+              if (onView) {
+                onView();
+              } else {
+                // fallback—to props with "id"
+                navigate(`/course/${title.replace(/\s+/g, "-").toLowerCase()}`);
+              }
+            }}
             className="bg-green-600 text-white rounded px-4 py-1 text-sm font-semibold hover:bg-green-700 transition"
           >
             View Course

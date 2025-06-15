@@ -16,13 +16,13 @@ export default function Index() {
       const { data, error } = await supabase.from("courses").select("*").order("id").limit(1).single();
       if (data) {
         setFeaturedCourse({
-          image: DEFAULT_COURSE_IMAGE, // Placeholder; could fetch from a column if available
+          image: DEFAULT_COURSE_IMAGE,
           title: data.title,
           instructor: "Sustainable Team",
-          enrolled: 125, // Hardcoded for now; could be dynamic if enrollments table is used
-          nextRun: "Jul 6", // Placeholder; you can update if you have a date for next session
+          enrolled: 125,
+          nextRun: "Jul 6",
           price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
-          onView: () => window.location.href = "/courses",
+          onView: () => window.location.href = `/course/${data.id}`,
         });
       }
       setLoading(false);

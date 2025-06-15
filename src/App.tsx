@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Auth from "@/pages/Auth";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import React from "react";
+import CourseDetail from "./pages/CourseDetail";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,8 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth" element={<Auth />} />
+          {/* New Course Detail route */}
+          <Route path="/course/:id" element={<CourseDetail />} />
           {/* All custom/protected routes above the catch-all */}
           {/* Example of a protected route; add real private pages below: */}
           {/*
