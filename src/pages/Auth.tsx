@@ -43,13 +43,16 @@ export default function Auth() {
         } else {
           // Send Welcome Email
           try {
+            console.log("[Auth] Attempting to send welcome email via Resend...");
             await sendEmail({
               event: "welcome",
               to: email,
               userName: fullName,
             });
+            console.log("[Auth] Welcome email sent via Resend.");
           } catch (e: any) {
             console.error("sendEmail welcome error:", e);
+            toast({ title: "Could not send welcome email", description: e?.message });
           }
           toast({ title: "Signup successful!", description: "Check your email for confirmation." });
           setIsSignUp(false);

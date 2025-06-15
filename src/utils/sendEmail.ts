@@ -27,6 +27,7 @@ export async function sendEmail({
     certificateLink,
   };
 
+  console.log("[sendEmail] Calling send-email function with:", body);
   const res = await fetch(fnUrl, {
     method: "POST",
     headers: {
@@ -37,9 +38,15 @@ export async function sendEmail({
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Failed to send email");
+    let err = "Unknown error";
+    try {
+      const resp = await res.json();
+      err = resp.error || err;
+    } catch {}
+    console.error("[sendEmail] Error response from send-email function:", err);
+    throw new Error(err || "Failed to send email");
   }
-  return res.json();
+  const result = await res.json();
+  console.log("[sendEmail] send-email function succeeded:", result);
+  return result;
 }
-
