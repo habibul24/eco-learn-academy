@@ -65,19 +65,32 @@ export default function EnrolledCourse() {
   React.useEffect(() => {
     async function fetchProgress() {
       if (!user || !course) return;
-      const { data: watched } = await import("@/integrations/supabase/client")
-        .then(({ supabase }) =>
-          supabase
-            .from("user_progress")
-            .select("video_id")
-            .eq("user_id", user.id)
-            .eq("watched", true)
-        );
-      const watchedIds = (watched || []).map((w) => w.video_id);
-      const total = videos.length;
-      const completed = videos.filter(v => watchedIds.includes(v.id)).length;
-      setProgress(total ? Math.round((completed / total) * 100) : 0);
-      setAllWatched(completed === total && total > 0);
+      try {
+        const { data: watched, error } = await import("@/integrations/supabase/client")
+          .then(({ supabase }) =>
+            supabase
+              .from("user_progress")
+              .select("video_id, watched")
+              .eq("user_id", user.id)
+              .eq("watched", true)
+          );
+        if (error) {
+          console.error("[DEBUG: fetchProgress] Supabase query error:", error);
+        }
+        console.log("[DEBUG: fetchProgress] watched data:", watched);
+
+        const watchedIds = (watched || []).map((w) => w.video_id);
+        console.log("[DEBUG: fetchProgress] watchedIds:", watchedIds);
+
+        const total = videos.length;
+        const completed = videos.filter(v => watchedIds.includes(v.id)).length;
+        console.log(`[DEBUG: fetchProgress] completed: ${completed}, total: ${total}`);
+
+        setProgress(total ? Math.round((completed / total) * 100) : 0);
+        setAllWatched(completed === total && total > 0);
+      } catch (err) {
+        console.error("[DEBUG: fetchProgress] Unexpected fetch error:", err);
+      }
     }
     fetchProgress();
   }, [user, course, videos]);
