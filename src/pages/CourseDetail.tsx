@@ -185,6 +185,46 @@ export default function CourseDetail() {
     return section.filter(Boolean);
   }
 
+  async function handleStripePay() {
+    setPaying(true);
+    checkSupabaseClient();
+    try {
+      const { data, error } = await supabase.functions.invoke("stripe-pay-course", {
+        body: { course_id: Number(id) },
+      });
+      if (error || !data?.url) {
+        toast({ title: "Stripe payment failed", description: error?.message || "Unable to initiate payment." });
+      } else {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      console.error("[debug] Stripe payment error", err);
+      toast({ title: "Stripe payment error", description: err.message });
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  async function handlePayPalPay() {
+    setPaying(true);
+    checkSupabaseClient();
+    try {
+      const { data, error } = await supabase.functions.invoke("paypal-pay-course", {
+        body: { action: "create", course_id: Number(id) }
+      });
+      if (error || !data?.url) {
+        toast({ title: "PayPal error", description: error?.message || "Unable to start payment." });
+      } else {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      console.error("[debug] PayPal payment error", err);
+      toast({ title: "PayPal payment error", description: err.message });
+    } finally {
+      setPaying(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
