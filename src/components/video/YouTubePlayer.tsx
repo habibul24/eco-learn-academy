@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { withRetry } from "@/utils/retryUtils";
 import { PlayerLoading } from "./PlayerLoading";
 import type { User } from "@supabase/supabase-js";
+import MarkCompleteButton from "./MarkCompleteButton";
 
 type YouTubePlayerProps = {
   videoId: string;
@@ -27,8 +28,12 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   const [playerReady, setPlayerReady] = React.useState(false);
   const completeMarkRef = useRef(false);
 
+  // For debug fallback
+  const [debugShowComplete, setDebugShowComplete] = React.useState(false);
+
   useEffect(() => {
     completeMarkRef.current = false;
+    setDebugShowComplete(false);
   }, [videoId, videoDbId, user?.id]);
 
   // Load YouTube IFrame API script
@@ -58,6 +63,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         typeof playerRef.current.getDuration !== "function" ||
         completeMarkRef.current
       ) {
+        // Add debug for current player state
+        console.log("[YouTubePlayer] Skipping poll: playerRef", playerRef.current, "playerReady", playerReady);
         return;
       }
       try {
@@ -68,6 +75,11 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         // DEBUG: Log each check to see timing progression near end
         console.log("[YouTubePlayer] polling current/duration:", {current, duration, left});
 
+        // If stuck just shy of the end, make sure user can still mark complete!
+        if (duration > 0 && current > 0 && (duration - current < 12 && duration - current > 2.5)) {
+          setDebugShowComplete(true);
+        }
+
         if (duration > 0) {
           // If less than 2.5 seconds remain, count as completed (+forgiveness)
           if ((left !== null && left < 2.5 && duration > 15) || force) {
@@ -75,11 +87,12 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
               console.log("[YouTubePlayer] TRIGGERING onComplete", {current, duration, left, force});
               if (onComplete) onComplete();
               completeMarkRef.current = true;
+              setDebugShowComplete(false);
             }
           }
         }
       } catch (e) {
-        // ignore
+        console.warn("[YouTubePlayer] Error in poll:", e);
       }
     }
 
@@ -93,6 +106,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 
   useEffect(() => {
     if (!videoId || !videoDbId || !user || !containerRef.current) {
+      console.log("[YouTubePlayer] Skipping player init: missing dependency", {videoId, videoDbId, user, container: !!containerRef.current});
       return;
     }
 
@@ -117,12 +131,15 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
           events: {
             onReady: () => {
               setPlayerReady(true);
+              console.log("[YouTubePlayer] Player ready", playerRef.current);
             },
             onStateChange: (event: any) => {
               // 0: ended
               if (event.data === 0 && !completeMarkRef.current) {
                 completeMarkRef.current = true;
                 if (onComplete) onComplete(); // Mark video as ended for UI
+                setDebugShowComplete(false);
+                console.log("[YouTubePlayer] YT Event: ended");
               }
             },
             onError: (err: any) => {
@@ -161,6 +178,21 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         id="youtube-player"
       />
       {!playerReady && <PlayerLoading />}
+      {debugShowComplete && (
+        <div className="absolute left-0 right-0 bottom-16 flex justify-center z-30">
+          <MarkCompleteButton
+            onClick={() => {
+              if (!completeMarkRef.current) {
+                if (onComplete) onComplete();
+                completeMarkRef.current = true;
+                setDebugShowComplete(false);
+                console.log("[YouTubePlayer] Fallback: manual Mark Complete button pressed");
+              }
+            }}
+            loading={false}
+          />
+        </div>
+      )}
     </div>
   );
 };
