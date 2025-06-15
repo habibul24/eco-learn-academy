@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
@@ -64,12 +63,24 @@ export default function CourseVideoPlayer({
   }, [ytVideoId]);
 
   useEffect(() => {
-    if (!ytVideoId || !user || !videoId) {
-      console.log("[VideoPlayer] Early exit: ytVideoId, user, or videoId missing", {
-        ytVideoId,
-        user,
-        videoId
+    if (!ytVideoId || !videoId) {
+      // Show warning if video ID or YouTube ID missing
+      if (!ytVideoId) {
+        console.warn("[VideoPlayer] No YouTube video ID found, cannot play.");
+      }
+      if (!videoId) {
+        console.warn("[VideoPlayer] No video database ID, cannot mark progress.");
+      }
+      return;
+    }
+    if (!user) {
+      // Show a warning toast if no user is present, cannot mark progress
+      toast({
+        variant: "destructive",
+        title: "Not signed in",
+        description: "You must be signed in to track your progress.",
       });
+      console.error("[VideoPlayer] No user found – cannot mark watched.");
       return;
     }
 
@@ -119,32 +130,51 @@ export default function CourseVideoPlayer({
                 // eslint-disable-next-line no-console
                 console.log("[VideoPlayer] Video ended, marking watched for uid:", user.id, "videoId:", videoId);
 
-                const { error, data } = await supabase
-                  .from("user_progress")
-                  .upsert({
-                    user_id: user.id,
-                    video_id: videoId,
-                    watched: true,
-                    progress_percentage: 100,
-                  })
-                  .select();
+                try {
+                  const { error, data } = await supabase
+                    .from("user_progress")
+                    .upsert({
+                      user_id: user.id,
+                      video_id: videoId,
+                      watched: true,
+                      progress_percentage: 100,
+                    })
+                    .select();
 
-                // eslint-disable-next-line no-console
-                if (error) {
-                  console.error("[VideoPlayer] Error marking video watched:", error);
+                  if (error) {
+                    console.error("[VideoPlayer] Error marking video watched:", error);
+                    toast({
+                      variant: "destructive",
+                      title: "Error marking video as completed",
+                      description:
+                        error.message +
+                        (error.code ? ` (code: ${error.code})` : ""),
+                    });
+                  } else if (!data || data.length === 0) {
+                    // upsert may return empty data if RLS blocks the action!
+                    toast({
+                      variant: "destructive",
+                      title: "Progress not saved!",
+                      description:
+                        "Your progress was not recorded. This may happen if you are not enrolled, not signed in, or due to access issues.",
+                    });
+                    console.error("[VideoPlayer] Upsert returned no data – likely blocked by RLS policy.", { user_id: user.id, video_id: videoId });
+                  } else {
+                    toast({
+                      title: "Video marked as watched!",
+                      description: "Your progress has been updated for this video.",
+                    });
+                    // eslint-disable-next-line no-console
+                    console.log("[VideoPlayer] Marked video as watched:", data);
+                    if (onComplete) onComplete();
+                  }
+                } catch (e) {
                   toast({
                     variant: "destructive",
-                    title: "Error marking video as completed",
-                    description: error.message,
+                    title: "Unexpected error recording progress",
+                    description: (e as Error).message,
                   });
-                } else {
-                  toast({
-                    title: "Video marked as watched!",
-                    description: "Your progress has been updated for this video.",
-                  });
-                  // eslint-disable-next-line no-console
-                  console.log("[VideoPlayer] Marked video as watched:", data);
-                  if (onComplete) onComplete();
+                  console.error("[VideoPlayer] Exception during upsert progress:", e);
                 }
               }
             },
@@ -192,6 +222,20 @@ export default function CourseVideoPlayer({
     );
   }
 
+  // Show visual warning if user not signed in
+  if (!user) {
+    return (
+      <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-yellow-50 border border-yellow-300 flex flex-col items-center justify-center p-8">
+        <div className="text-yellow-900 font-semibold mb-2">
+          You must be signed in to track your course progress.
+        </div>
+        <div className="text-yellow-700 text-sm">
+          Please <b>log in</b> to continue tracking your earned progress.
+        </div>
+      </div>
+    );
+  }
+
   // YouTube: show loader until ready
   return (
     <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex justify-center items-center">
@@ -223,4 +267,3 @@ export default function CourseVideoPlayer({
     </div>
   );
 }
-
