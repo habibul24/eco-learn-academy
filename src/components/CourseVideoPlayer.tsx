@@ -1,42 +1,10 @@
 
-import React, { useEffect, useRef } from "react";
-import { supabase, validateSupabaseClient } from "@/integrations/supabase/client";
+import React from "react";
 import { useAuthUser } from "@/hooks/useAuthUser";
-import { useToast } from "@/components/ui/use-toast";
-
-// Retry helper function for database operations
-async function withRetry<T>(
-  operation: () => Promise<T>,
-  maxRetries: number = 3,
-  delay: number = 1000
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      console.warn(`[VideoPlayer] Attempt ${attempt} failed:`, error);
-      
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      
-      // Wait before retrying with exponential backoff
-      await new Promise(resolve => setTimeout(resolve, delay * attempt));
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
-
-/**
- * Extract YouTube video ID from a YouTube URL (support various url formats)
- */
-function getYoutubeVideoId(url?: string | null): string | null {
-  if (!url) return null;
-  const youtubeRegex =
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-  const match = url.match(youtubeRegex);
-  return match ? match[1] : null;
-}
+import { getYoutubeVideoId } from "@/utils/youtubeUtils";
+import { YouTubePlayer } from "./video/YouTubePlayer";
+import { GenericVideoPlayer } from "./video/GenericVideoPlayer";
+import { AuthWarning } from "./video/AuthWarning";
 
 type CourseVideoPlayerProps = {
   videoUrl: string | null;
@@ -46,12 +14,6 @@ type CourseVideoPlayerProps = {
   onComplete?: () => void;
 };
 
-const PlayerLoading = () => (
-  <div className="w-full h-full flex items-center justify-center text-green-900 bg-white/50">
-    Loading video...
-  </div>
-);
-
 export default function CourseVideoPlayer({
   videoUrl,
   courseTitle,
@@ -60,192 +22,36 @@ export default function CourseVideoPlayer({
   onComplete,
 }: CourseVideoPlayerProps) {
   const { user } = useAuthUser();
-  const playerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
   const ytVideoId = getYoutubeVideoId(videoUrl ?? "");
-  const [playerReady, setPlayerReady] = React.useState(false);
-  const completeMarkRef = useRef(false);
 
-  useEffect(() => {
-    completeMarkRef.current = false;
-  }, [ytVideoId, videoId, user?.id]);
-
-  // Load YouTube IFrame API script only if it's a youtube video
-  useEffect(() => {
-    if (!ytVideoId) return;
-    if ((window as any).YT && (window as any).YT.Player) return;
-
-    const scriptTag = document.createElement("script");
-    scriptTag.src = "https://www.youtube.com/iframe_api";
-    scriptTag.async = true;
-    document.body.appendChild(scriptTag);
-
-    return () => {
-      if (document.body.contains(scriptTag)) {
-        document.body.removeChild(scriptTag);
-      }
-    };
-  }, [ytVideoId]);
-
-  useEffect(() => {
-    if (!ytVideoId || !videoId || !user || !containerRef.current) {
-      return;
-    }
-
-    const onYouTubeIframeAPIReady = () => {
-      // Remove old player instance if exists
-      if (playerRef.current && typeof playerRef.current.destroy === "function") {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-
-      playerRef.current = new (window as any).YT.Player(
-        containerRef.current,
-        {
-          videoId: ytVideoId,
-          playerVars: {
-            controls: 1,
-            showinfo: 0,
-            rel: 0,
-            modestbranding: 1,
-            autoplay: 0,
-          },
-          events: {
-            onReady: () => {
-              setPlayerReady(true);
-            },
-            onStateChange: async (event: any) => {
-              // 0: ended, 1: playing, 2: paused, etc.
-              if (event.data === 0 && !completeMarkRef.current) {
-                completeMarkRef.current = true;
-
-                try {
-                  console.log("[VideoPlayer] Marking video as watched:", { videoId, userId: user.id });
-                  
-                  const result = await withRetry(async () => {
-                    // Validate client before database operation
-                    validateSupabaseClient();
-                    
-                    const { error, data } = await supabase
-                      .from("user_progress")
-                      .upsert({
-                        user_id: user.id,
-                        video_id: videoId,
-                        watched: true,
-                        progress_percentage: 100,
-                      })
-                      .select();
-
-                    if (error) {
-                      console.error("[VideoPlayer] Database error:", error);
-                      throw new Error(`Progress save failed: ${error.message}`);
-                    }
-
-                    return data;
-                  });
-
-                  if (!result || result.length === 0) {
-                    console.warn("[VideoPlayer] No data returned after upsert");
-                    toast({
-                      variant: "destructive",
-                      title: "Progress not saved",
-                      description: "Could not save your progress. You may not be enrolled or signed in properly.",
-                    });
-                  } else {
-                    console.log("[VideoPlayer] Progress saved successfully:", result);
-                    toast({
-                      title: "Video completed!",
-                      description: "Your progress has been saved.",
-                    });
-                    if (onComplete) onComplete();
-                  }
-                } catch (e) {
-                  console.error("[VideoPlayer] Final error after retries:", e);
-                  toast({
-                    variant: "destructive",
-                    title: "Progress save failed",
-                    description: "Could not save your progress. Please try refreshing the page.",
-                  });
-                }
-              }
-            },
-            onError: (err: any) => {
-              toast({
-                variant: "destructive",
-                title: "Video player error",
-                description: `Could not play YouTube video (${err?.data || err})`,
-              });
-              console.error("[VideoPlayer] YouTube player error:", err);
-            },
-          },
-        }
-      );
-    };
-
-    // If the API is already loaded
-    if ((window as any).YT && (window as any).YT.Player) {
-      onYouTubeIframeAPIReady();
-    } else {
-      (window as any).onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
-    }
-
-    return () => {
-      if (playerRef.current && typeof playerRef.current.destroy === "function") {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-    };
-  }, [ytVideoId, user, videoId, toast, onComplete]);
+  // Show visual warning if user not signed in
+  if (!user) {
+    return <AuthWarning />;
+  }
 
   // For non-YouTube videos, embed as plain iframe
   if (videoUrl && !ytVideoId) {
     return (
       <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex justify-center items-center">
-        <iframe
-          src={videoUrl}
-          title={courseTitle}
-          className="w-full h-full min-h-[260px] rounded-lg"
-          allowFullScreen
-        />
+        <GenericVideoPlayer videoUrl={videoUrl} courseTitle={courseTitle} />
       </div>
     );
   }
 
-  // Show visual warning if user not signed in
-  if (!user) {
-    return (
-      <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-yellow-50 border border-yellow-300 flex flex-col items-center justify-center p-8">
-        <div className="text-yellow-900 font-semibold mb-2">
-          You must be signed in to track your course progress.
-        </div>
-        <div className="text-yellow-700 text-sm">
-          Please <b>log in</b> to continue tracking your earned progress.
-        </div>
-      </div>
-    );
-  }
-
-  // YouTube: show loader until ready
+  // YouTube video player
   return (
     <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex justify-center items-center">
       {videoUrl ? (
         ytVideoId ? (
-          <div className="w-full h-full min-h-[260px] relative">
-            <div
-              ref={containerRef}
-              className="w-full h-full min-h-[260px] rounded-lg"
-              id="youtube-player"
-            />
-            {!playerReady && <PlayerLoading />}
-          </div>
-        ) : (
-          <iframe
-            src={videoUrl}
-            title={courseTitle}
-            className="w-full h-full min-h-[260px] rounded-lg"
-            allowFullScreen
+          <YouTubePlayer
+            videoId={ytVideoId}
+            courseTitle={courseTitle}
+            user={user}
+            videoDbId={videoId}
+            onComplete={onComplete}
           />
+        ) : (
+          <GenericVideoPlayer videoUrl={videoUrl} courseTitle={courseTitle} />
         )
       ) : (
         <img
