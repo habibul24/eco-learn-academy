@@ -38,6 +38,13 @@ export default function CourseDetail() {
   const [progress, setProgress] = React.useState(0);
   const [allWatched, setAllWatched] = React.useState(false);
 
+  // If enrolled, redirect to EnrolledCourse
+  React.useEffect(() => {
+    if (isEnrolled && course && user) {
+      navigate(`/enrolled-course/${course.id}`);
+    }
+  }, [isEnrolled, course, user, navigate]);
+
   // Sync current video
   React.useEffect(() => {
     setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);
@@ -164,9 +171,7 @@ export default function CourseDetail() {
         <div className="w-full lg:w-3/5">
           <CourseDetailHeader title={course.title} priceFormatted={priceFormatted} />
           {/* Show progress bar ONLY if enrolled */}
-          {isEnrolled && (
-            <CourseProgress progress={progress} allWatched={allWatched} />
-          )}
+          {/* Removed, handled in enrolled view */}
           <CourseVideoPlayer
             videoUrl={activeVideoUrl}
             courseTitle={course.title}
@@ -189,12 +194,13 @@ export default function CourseDetail() {
               activeVideoUrl={activeVideoUrl}
               setActiveVideoUrl={setActiveVideoUrl}
               isEnrolled={isEnrolled}
-              paying={payment.paying}
-              onBuyCourse={payment.startPurchase}
+              paying={false}
+              onBuyCourse={() => {}}
             />
           </div>
         </div>
       </div>
+      {/* Payment dialog remains as before */}
       <CoursePaymentDialog
         open={payment.showPaymentModal}
         onOpenChange={payment.setShowPaymentModal}

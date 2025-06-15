@@ -1,0 +1,127 @@
+
+import React from "react";
+import Navbar from "@/components/Navbar";
+import CourseContentSidebar from "@/components/CourseContentSidebar";
+import CourseVideoPlayer from "@/components/CourseVideoPlayer";
+import CourseSidebarToggle from "@/components/CourseSidebarToggle";
+import { useParams, useNavigate } from "react-router-dom";
+import { useCourseDetailData } from "@/hooks/useCourseDetailData";
+import { Loader2 } from "lucide-react";
+import CourseProgress from "@/components/CourseProgress";
+import CourseDetailHeader from "@/components/CourseDetailHeader";
+import CourseDescriptionSections from "@/components/CourseDescriptionSections";
+
+const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
+
+function extractSection(desc: string, title: string) {
+  const lines = desc.split("\n");
+  const idx = lines.findIndex(line => line.trim().toLowerCase().startsWith(title.toLowerCase()));
+  if (idx === -1) return [];
+  const section: string[] = [];
+  for (let i = idx + 1; i < lines.length; i++) {
+    if (/^[A-Za-z\s]+:?$/.test(lines[i]) && i !== idx + 1) break;
+    section.push(lines[i].replace(/^-\s?/, "").trim());
+  }
+  return section.filter(Boolean);
+}
+
+export default function EnrolledCourse() {
+  const { course, chapters, videos, loading, user } = useCourseDetailData();
+  const [progress, setProgress] = React.useState(0);
+  const [allWatched, setAllWatched] = React.useState(false);
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [activeVideoUrl, setActiveVideoUrl] = React.useState<string | null>(videos.length > 0 ? videos[0].video_url : null);
+
+  React.useEffect(() => {
+    setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);
+  }, [videos]);
+
+  React.useEffect(() => {
+    async function fetchProgress() {
+      if (!user || !course) return;
+      const { data: watched } = await import("@/integrations/supabase/client")
+        .then(({ supabase }) =>
+          supabase
+            .from("user_progress")
+            .select("video_id")
+            .eq("user_id", user.id)
+            .eq("watched", true)
+        );
+      const watchedIds = (watched || []).map((w) => w.video_id);
+      const total = videos.length;
+      const completed = videos.filter(v => watchedIds.includes(v.id)).length;
+      setProgress(total ? Math.round((completed / total) * 100) : 0);
+      setAllWatched(completed === total && total > 0);
+    }
+    fetchProgress();
+  }, [user, course, videos]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="animate-spin mr-3" /> Loading...
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="flex flex-col items-center mt-16">
+        <div className="text-2xl text-center text-red-700 font-semibold mb-6">Course not found</div>
+      </div>
+    );
+  }
+
+  const priceFormatted = `HKD ${course.price ? course.price.toFixed(2) : "0.00"}`;
+  const whoFor = extractSection(course.description, "Who is this course for?");
+  const objectives = extractSection(course.description, "Learning Objectives");
+  const firstVideoUrl = videos.length > 0 ? videos[0].video_url : null;
+
+  return (
+    <div className="flex flex-col min-h-screen bg-[#F9F8F3]">
+      <Navbar />
+      <div className="max-w-7xl w-full mx-auto px-2 md:px-8 flex-1 flex flex-col pt-24 pb-12">
+        <CourseDetailHeader title={course.title} priceFormatted={priceFormatted} />
+        <CourseProgress progress={progress} allWatched={allWatched} />
+        <div className="flex gap-6">
+          {/* Sidebar */}
+          {sidebarOpen && (
+            <aside className="w-full max-w-[340px]">
+              <CourseContentSidebar
+                chapters={chapters}
+                videos={videos}
+                firstVideoUrl={firstVideoUrl}
+                activeVideoUrl={activeVideoUrl}
+                setActiveVideoUrl={setActiveVideoUrl}
+                isEnrolled={true}
+                paying={false}
+                onBuyCourse={() => {}}
+              />
+            </aside>
+          )}
+          <div className="flex-1 min-w-0">
+            <CourseSidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+            <CourseVideoPlayer
+              videoUrl={activeVideoUrl}
+              courseTitle={course.title}
+              fallbackImage={DEFAULT_IMAGE}
+              videoId={videos.find(v => v.video_url === activeVideoUrl)?.id}
+            />
+            {/* Video Transcript */}
+            <div className="mt-4 p-4 bg-white rounded shadow border">
+              <h3 className="font-semibold text-green-900 mb-2">Video Transcript</h3>
+              <div className="text-gray-800 text-base">Transcript will appear here soon. (Placeholder)</div>
+            </div>
+            <div className="mt-8">
+              <CourseDescriptionSections
+                description={course.description}
+                whoFor={whoFor}
+                objectives={objectives}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

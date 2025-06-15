@@ -39,6 +39,11 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/course/:id" element={<CourseDetail />} />
+          <Route path="/enrolled-course/:id" element={
+            <ProtectedRoute>
+              <import('@/pages/EnrolledCourse').then(mod => <mod.default />)} // dynamic import for safety
+            </ProtectedRoute>
+          } />
           <Route path="/my-courses" element={
             <ProtectedRoute>
               <MyCourses />
