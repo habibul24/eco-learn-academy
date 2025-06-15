@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useParams } from "react-router-dom";
@@ -34,6 +35,7 @@ type Course = {
 
 export function useCourseDetailData() {
   const { id } = useParams<{ id: string }>();
+  const courseId = id && !isNaN(Number(id)) ? Number(id) : undefined;
   const { user, loading: authLoading } = useAuthUser();
   const [course, setCourse] = useState<Course | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -55,9 +57,17 @@ export function useCourseDetailData() {
 
   useEffect(() => {
     checkSupabaseClient();
+    // If courseId is invalid, don't make requests and reset state
+    if (typeof courseId !== "number" || isNaN(courseId)) {
+      setCourse(null);
+      setChapters([]);
+      setVideos([]);
+      setLoading(false);
+      console.warn("[useCourseDetailData] Invalid or missing courseId in params:", { id, courseId });
+      return;
+    }
     async function fetchDetails() {
       setLoading(true);
-      const courseId = Number(id);
       const { data: courseData } = await supabase
         .from("courses")
         .select("*")
@@ -84,25 +94,26 @@ export function useCourseDetailData() {
       setLoading(false);
     }
     fetchDetails();
-  }, [id]);
+  }, [id, courseId]);
 
   useEffect(() => {
     checkSupabaseClient();
+    // Only check enrollment when course and courseId are valid
+    if (!user || !course || typeof courseId !== "number" || isNaN(courseId)) {
+      setIsEnrolled(false);
+      return;
+    }
     async function checkEnrollment() {
-      if (user && course) {
-        const { data } = await supabase
-          .from("course_enrollments")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("course_id", course.id)
-          .maybeSingle();
-        setIsEnrolled(!!data);
-      } else {
-        setIsEnrolled(false);
-      }
+      const { data } = await supabase
+        .from("course_enrollments")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("course_id", course.id)
+        .maybeSingle();
+      setIsEnrolled(!!data);
     }
     checkEnrollment();
-  }, [user, course]);
+  }, [user, course, courseId]);
 
   return {
     course,
