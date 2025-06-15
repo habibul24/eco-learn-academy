@@ -131,10 +131,17 @@ export default function CourseDetail() {
           .eq("course_id", course.id);
         if (!certRes.data?.length) {
           const certNumber = `CERT-${Date.now()}-${user.id.slice(-6)}`;
+          // Fix: Always pass user_full_name when inserting certificate
+          const userFullName =
+            user.user_metadata?.full_name?.trim?.() ||
+            user.user_metadata?.name?.trim?.() ||
+            user.email ||
+            "";
           const { error } = await supabase.from("certificates").insert({
             user_id: user.id,
             course_id: course.id,
             certificate_number: certNumber,
+            user_full_name: userFullName,
           });
           if (!error) {
             // Send Certificate Email
@@ -142,7 +149,7 @@ export default function CourseDetail() {
               await sendEmail({
                 event: "certificate",
                 to: user.email,
-                userName: user.user_metadata?.full_name || user.email || "",
+                userName: userFullName,
                 courseTitle: course.title,
                 certificateLink: `${window.location.origin}/my-certificates`,
               });

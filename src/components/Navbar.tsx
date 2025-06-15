@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -114,7 +113,13 @@ export default function Navbar() {
         <div>
           {loading ? null : user ? (
             <div className="flex items-center gap-3">
-              <span className="text-green-800 font-medium">{user.email}</span>
+              <span className="text-green-800 font-medium">
+                {"Hello, "}
+                {user.user_metadata?.full_name
+                  ? user.user_metadata.full_name
+                  : user.email}
+                {"!"}
+              </span>
               <Button variant="secondary" onClick={async () => {
                 await supabase.auth.signOut();
                 navigate("/auth");
