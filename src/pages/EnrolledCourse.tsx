@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import CourseProgress from "@/components/CourseProgress";
 import CourseDetailHeader from "@/components/CourseDetailHeader";
 import { supabase } from "@/integrations/supabase/client";
+import { useCourseProgress } from "@/hooks/useCourseProgress";
 
 // Runtime supabase client integrity check
 if (!supabase || typeof supabase.from !== "function") {
@@ -38,12 +39,10 @@ function extractSection(desc: string, title: string) {
 
 export default function EnrolledCourse() {
   const { course, chapters, videos, loading, user } = useCourseDetailData();
-  const [progress, setProgress] = React.useState(0);
-  const [allWatched, setAllWatched] = React.useState(false);
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [activeVideoUrl, setActiveVideoUrl] = React.useState<string | null>(videos.length > 0 ? videos[0].video_url : null);
 
-  // Warn in UI if supabase client is invalid
+  // Defensive: supabase runtime integrity check
   if (!supabase || typeof supabase.from !== "function") {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-red-50">
@@ -62,38 +61,12 @@ export default function EnrolledCourse() {
     setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);
   }, [videos]);
 
-  React.useEffect(() => {
-    async function fetchProgress() {
-      if (!user || !course) return;
-      try {
-        const { data: watched, error } = await import("@/integrations/supabase/client")
-          .then(({ supabase }) =>
-            supabase
-              .from("user_progress")
-              .select("video_id, watched")
-              .eq("user_id", user.id)
-              .eq("watched", true)
-          );
-        if (error) {
-          console.error("[DEBUG: fetchProgress] Supabase query error:", error);
-        }
-        console.log("[DEBUG: fetchProgress] watched data:", watched);
-
-        const watchedIds = (watched || []).map((w) => w.video_id);
-        console.log("[DEBUG: fetchProgress] watchedIds:", watchedIds);
-
-        const total = videos.length;
-        const completed = videos.filter(v => watchedIds.includes(v.id)).length;
-        console.log(`[DEBUG: fetchProgress] completed: ${completed}, total: ${total}`);
-
-        setProgress(total ? Math.round((completed / total) * 100) : 0);
-        setAllWatched(completed === total && total > 0);
-      } catch (err) {
-        console.error("[DEBUG: fetchProgress] Unexpected fetch error:", err);
-      }
-    }
-    fetchProgress();
-  }, [user, course, videos]);
+  // Use the new course progress hook
+  const { progress, allWatched } = useCourseProgress({
+    user,
+    courseId: course?.id,
+    videos,
+  });
 
   if (loading) {
     return (
@@ -152,7 +125,6 @@ export default function EnrolledCourse() {
               <h3 className="font-semibold text-green-900 mb-2">Video Transcript</h3>
               <div className="text-gray-800 text-base">Transcript will appear here soon. (Placeholder)</div>
             </div>
-            {/* CourseDescriptionSections removed per request */}
           </div>
         </div>
       </div>
