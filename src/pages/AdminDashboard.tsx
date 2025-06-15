@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +38,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
 
   // 1. Check role - if not admin, redirect
-  const { data: rolesData } = useQuery({
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
     queryKey: ["my-roles", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -58,13 +59,13 @@ export default function AdminDashboard() {
     }
   }, [rolesData, loading, navigate]);
 
-  // 2. Fetch stats for cards/table
+  // 2. Fetch stats for cards/table, only after rolesData confirmed
   const statsQuery = useQuery({
     queryKey: ["admin-stats"],
     queryFn: fetchAdminStats,
+    enabled: !!isAdmin, // Only run when isAdmin is true
   });
 
-  // If dashboard loaded as admin, but enrollments is still zero, show a hint toast
   React.useEffect(() => {
     if (
       !loading &&
@@ -81,9 +82,14 @@ export default function AdminDashboard() {
         variant: "default",
       });
     }
+    // Debug: See what data the admin sees
+    if (statsQuery.data) {
+      // eslint-disable-next-line no-console
+      console.log('ADMIN ENROLLMENTS DATA', statsQuery.data.enrollments);
+    }
   }, [loading, isAdmin, statsQuery.data, statsQuery.isLoading, toast]);
 
-  if (loading || statsQuery.isLoading) {
+  if (loading || rolesLoading || statsQuery.isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading Admin Dashboard...</div>;
   }
 
