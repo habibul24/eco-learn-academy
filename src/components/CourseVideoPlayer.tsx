@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
@@ -64,27 +65,12 @@ export default function CourseVideoPlayer({
 
   useEffect(() => {
     if (!ytVideoId || !videoId) {
-      // Show warning if video ID or YouTube ID missing
-      if (!ytVideoId) {
-        console.warn("[VideoPlayer] No YouTube video ID found, cannot play.");
-      }
-      if (!videoId) {
-        console.warn("[VideoPlayer] No video database ID, cannot mark progress.");
-      }
       return;
     }
     if (!user) {
-      // Show a warning toast if no user is present, cannot mark progress
-      toast({
-        variant: "destructive",
-        title: "Not signed in",
-        description: "You must be signed in to track your progress.",
-      });
-      console.error("[VideoPlayer] No user found – cannot mark watched.");
       return;
     }
 
-    // Enhanced debug: check for and log the containerRef
     if (!containerRef.current) {
       console.error("[VideoPlayer] containerRef.current is null! Cannot initialize player.");
       toast({
@@ -101,8 +87,6 @@ export default function CourseVideoPlayer({
         playerRef.current.destroy();
         playerRef.current = null;
       }
-      // eslint-disable-next-line no-console
-      console.log("[VideoPlayer] Initializing YouTube Player with videoId:", ytVideoId, "on element:", containerRef.current);
 
       playerRef.current = new (window as any).YT.Player(
         containerRef.current,
@@ -118,17 +102,11 @@ export default function CourseVideoPlayer({
           events: {
             onReady: () => {
               setPlayerReady(true);
-              // eslint-disable-next-line no-console
-              console.log("[VideoPlayer] YouTube player is ready");
             },
             onStateChange: async (event: any) => {
-              // eslint-disable-next-line no-console
-              console.log("[VideoPlayer] onStateChange fired", { data: event.data });
               // 0: ended, 1: playing, 2: paused, etc.
               if (event.data === 0 && !completeMarkRef.current) {
                 completeMarkRef.current = true;
-                // eslint-disable-next-line no-console
-                console.log("[VideoPlayer] Video ended, marking watched for uid:", user.id, "videoId:", videoId);
 
                 try {
                   const { error, data } = await supabase
@@ -151,7 +129,6 @@ export default function CourseVideoPlayer({
                         (error.code ? ` (code: ${error.code})` : ""),
                     });
                   } else if (!data || data.length === 0) {
-                    // upsert may return empty data if RLS blocks the action!
                     toast({
                       variant: "destructive",
                       title: "Progress not saved!",
@@ -164,8 +141,6 @@ export default function CourseVideoPlayer({
                       title: "Video marked as watched!",
                       description: "Your progress has been updated for this video.",
                     });
-                    // eslint-disable-next-line no-console
-                    console.log("[VideoPlayer] Marked video as watched:", data);
                     if (onComplete) onComplete();
                   }
                 } catch (e) {
@@ -184,7 +159,6 @@ export default function CourseVideoPlayer({
                 title: "Video player error",
                 description: `Could not play YouTube video (${err?.data || err})`,
               });
-              // eslint-disable-next-line no-console
               console.error("[VideoPlayer] YouTube player error:", err);
             },
           },
