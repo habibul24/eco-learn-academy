@@ -15,21 +15,28 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading } = useAuthUser();
-  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [roles, setRoles] = React.useState<string[]>([]);
 
   React.useEffect(() => {
-    async function checkAdmin() {
+    async function fetchRoles() {
       if (user?.id) {
         const { data } = await import("@/integrations/supabase/client").then(({ supabase }) =>
           supabase.from("user_roles").select("role").eq("user_id", user.id)
         );
-        setIsAdmin(data?.some((r: any) => r.role === "admin"));
+        if (data) {
+          setRoles(data.map((r: any) => r.role));
+        } else {
+          setRoles([]);
+        }
       } else {
-        setIsAdmin(false);
+        setRoles([]);
       }
     }
-    checkAdmin();
+    fetchRoles();
   }, [user]);
+
+  const isAdmin = roles.includes("admin");
+  const isLearner = roles.includes("user") && !isAdmin;
 
   return (
     <header className="w-full bg-white dark:bg-background shadow-md fixed top-0 left-0 z-40">
@@ -55,7 +62,7 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
-          {user && (
+          {isLearner && (
             <>
               <Link
                 to="/my-courses"
