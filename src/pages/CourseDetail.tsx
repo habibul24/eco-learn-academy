@@ -40,6 +40,7 @@ export default function CourseDetail() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get("payment");
+    const stripeSessionId = params.get("session_id");
     const paypalOrderId = params.get("token");
     if (paymentStatus === "success" && paypalOrderId && user && !isEnrolled) {
       (async () => {
@@ -60,7 +61,28 @@ export default function CourseDetail() {
         payment.setPaying(false);
       })();
     }
-    if (paymentStatus === "success" && !isEnrolled) {
+    // Handle Stripe return: /course/:id?payment=success&session_id=some-stripe-session-id
+    if (paymentStatus === "success" && stripeSessionId && user && !isEnrolled) {
+      (async () => {
+        payment.setPaying(true);
+        try {
+          const { error } = await (window as any).supabase.functions.invoke("stripe-enroll-course", {
+            body: { course_id: course.id, stripe_session_id: stripeSessionId },
+          });
+          if (!error) {
+            toast({ title: "Stripe payment confirmed, enrolled!" });
+            navigate("/my-courses");
+          } else {
+            toast({ title: "Stripe payment error", description: error.message || "Unable to confirm payment." });
+          }
+        } catch (err: any) {
+          toast({ title: "Stripe enrollment error", description: err.message });
+        }
+        payment.setPaying(false);
+      })();
+    }
+    // Fallback, if payment=success but provider unknown, just toast and redirect
+    if (paymentStatus === "success" && !isEnrolled && !paypalOrderId && !stripeSessionId) {
       toast({ title: "Payment successful! Course unlocked." });
       navigate("/my-courses");
     }
