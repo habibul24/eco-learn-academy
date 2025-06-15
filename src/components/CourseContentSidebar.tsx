@@ -61,26 +61,28 @@ export default function CourseContentSidebar({
           const vids = videos.filter(v => v.chapter_id === chapter.id);
           return (
             <AccordionItem key={chapter.id} value={String(chapter.id)}>
-              <AccordionTrigger className="text-green-800 font-medium">{chapter.title}</AccordionTrigger>
+              {/* Chapter title left-aligned */}
+              <AccordionTrigger className="text-green-800 font-medium text-left">{chapter.title}</AccordionTrigger>
               <AccordionContent className="pb-2">
                 <ul>
                   {vids.map((video) => {
-                    const isFirst = video.id === firstVideoId;
+                    // All videos are accessible if enrolled
                     const isActive = activeVideoUrl === video.video_url;
+                    const clickable = isEnrolled || video.id === firstVideoId;
                     return (
                       <li
                         key={video.id}
                         className={`
                           flex items-center justify-between p-1 pl-3 rounded
-                          ${isFirst ? "hover:bg-green-50 cursor-pointer" : "cursor-not-allowed bg-gray-100 opacity-60"}
-                          ${isActive && isFirst ? "bg-green-100" : ""}
+                          ${clickable ? "hover:bg-green-50 cursor-pointer" : "cursor-not-allowed bg-gray-100 opacity-60"}
+                          ${isActive && clickable ? "bg-green-100" : ""}
                         `}
                         onClick={() => {
-                          if (isFirst) setActiveVideoUrl(video.video_url);
+                          if (clickable) setActiveVideoUrl(video.video_url);
                         }}
-                        style={{ pointerEvents: isFirst ? "auto" : "none" }}
-                        aria-disabled={!isFirst}
-                        tabIndex={isFirst ? 0 : -1}
+                        style={{ pointerEvents: clickable ? "auto" : "none" }}
+                        aria-disabled={!clickable}
+                        tabIndex={clickable ? 0 : -1}
                       >
                         <span className="flex items-center gap-2 text-green-900 text-sm">
                           <Youtube size={16} className="text-red-600" />
@@ -91,7 +93,8 @@ export default function CourseContentSidebar({
                             ? `${Math.floor(video.duration / 60)}:${(video.duration % 60).toString().padStart(2, "0")}`
                             : ""}
                         </span>
-                        {!isFirst && (
+                        {/* Show Locked tag only if NOT enrolled and NOT first video */}
+                        {!isEnrolled && video.id !== firstVideoId && (
                           <span className="text-[10px] ml-3 px-2 py-1 rounded-full bg-gray-200 text-gray-600">Locked</span>
                         )}
                       </li>
@@ -115,7 +118,6 @@ export default function CourseContentSidebar({
           Buy Course
         </Button>
       )}
-      {/* Remove "You are enrolled in this course!" indicator for enrolled users as requested */}
     </div>
   );
 }
