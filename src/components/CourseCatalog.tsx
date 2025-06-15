@@ -1,72 +1,59 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CourseCard from "./CourseCard";
 import { Dialog } from "@/components/ui/dialog";
 import { BookOpen, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-// Dummy course data
-const courses = [
-  {
-    id: "1",
-    image:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
-    title: "Introduction to Sustainable Living",
-    instructor: "Jane Yuen",
-    enrolled: 340,
-    nextRun: "Jul 8, 2025",
-    price: "$29",
-    description:
-      "Learn the basics of sustainability in daily life—from consuming less to reusing and recycling efficiently. This is your gateway to a greener tomorrow.",
-    curriculum: [
-      "Understanding Sustainability",
-      "Eco-friendly Home Habits",
-      "Composting & Recycling 101",
-      "Sustainable Shopping",
-    ],
-  },
-  {
-    id: "2",
-    image:
-      "https://images.unsplash.com/photo-1518495973542-4542c06a5843?auto=format&fit=crop&w=800&q=80",
-    title: "Urban Gardening & Community Food",
-    instructor: "Carlos Verde",
-    enrolled: 210,
-    nextRun: "Aug 21, 2025",
-    price: "$49",
-    description:
-      "Transform city spaces with practical skills for urban gardening. Grow food, build community plots, and contribute to local sustainability.",
-    curriculum: [
-      "Basics of Urban Gardening",
-      "Building a Community Plot",
-      "Seasonal Planting Schedules",
-      "Sharing & Harvesting",
-    ],
-  },
-  {
-    id: "3",
-    image:
-      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=800&q=80",
-    title: "Corporate Sustainability Certification",
-    instructor: "Avni Sharma",
-    enrolled: 120,
-    nextRun: "Sep 2, 2025",
-    price: "$149",
-    description:
-      "Get certified! This expert-led course empowers companies and employees to implement impactful sustainability initiatives at scale.",
-    curriculum: [
-      "Sustainability in the Workplace",
-      "Measuring Impact",
-      "Regulatory Landscape",
-      "Certification Exam & Project",
-    ],
-  },
-];
+const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
 // Typing for clarity
-type ActiveCourseType = (typeof courses)[number];
+type CourseType = {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+};
+
+type ActiveCourseType = CourseType & {
+  image: string;
+  instructor: string;
+  enrolled: number;
+  nextRun: string;
+  curriculum: string[];
+};
 
 export default function CourseCatalog() {
+  const [courses, setCourses] = useState<CourseType[]>([]);
   const [activeCourse, setActiveCourse] = useState<ActiveCourseType | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCourses() {
+      const { data, error } = await supabase.from("courses").select("*").order("id");
+      if (data) setCourses(data);
+      setLoading(false);
+    }
+    fetchCourses();
+  }, []);
+
+  const handleViewCourse = async (course: CourseType) => {
+    // Fetch chapters as "curriculum"
+    const { data: chaptersData } = await supabase
+      .from("chapters")
+      .select("title")
+      .eq("course_id", course.id)
+      .order("order_index");
+    // Build "active" course props for the dialog
+    setActiveCourse({
+      ...course,
+      image: DEFAULT_COURSE_IMAGE,
+      instructor: "Sustainable Team",
+      enrolled: 125,
+      nextRun: "Jul 6",
+      curriculum: chaptersData ? chaptersData.map((c) => c.title) : [],
+    });
+  };
 
   return (
     <section className="w-full px-1 py-10 xl:px-0">
@@ -74,20 +61,27 @@ export default function CourseCatalog() {
         <BookOpen className="text-green-600" size={32} />
         Explore Our Sustainability Courses
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
-        {courses.map((course) => (
-          <CourseCard
-            key={course.id}
-            image={course.image}
-            title={course.title}
-            instructor={course.instructor}
-            enrolled={course.enrolled}
-            nextRun={course.nextRun}
-            price={course.price}
-            onView={() => setActiveCourse(course)}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="py-8">Loading...</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
+          {courses.length === 0 && (
+            <div className="col-span-3 text-gray-500">No courses available.</div>
+          )}
+          {courses.map((course) => (
+            <CourseCard
+              key={course.id}
+              image={DEFAULT_COURSE_IMAGE}
+              title={course.title}
+              instructor="Sustainable Team"
+              enrolled={125}
+              nextRun="Jul 6"
+              price={course.price ? `USD ${parseFloat(course.price as any).toFixed(2)}` : "USD 0.00"}
+              onView={() => handleViewCourse(course)}
+            />
+          ))}
+        </div>
+      )}
 
       {activeCourse && (
         <Dialog open={!!activeCourse} onOpenChange={() => setActiveCourse(null)}>
@@ -124,7 +118,9 @@ export default function CourseCatalog() {
                 </ul>
               </div>
               <div className="flex justify-between items-end">
-                <span className="font-bold text-green-700 text-2xl">{activeCourse.price}</span>
+                <span className="font-bold text-green-700 text-2xl">
+                  {activeCourse.price ? `USD ${parseFloat(activeCourse.price as any).toFixed(2)}` : "USD 0.00"}
+                </span>
                 <button
                   className="bg-green-600 text-white rounded px-8 py-2 text-base font-semibold hover:bg-green-800 transition pulse"
                   onClick={() => alert("Connect Supabase & Stripe to enable checkout!")}
@@ -139,4 +135,3 @@ export default function CourseCatalog() {
     </section>
   );
 }
-

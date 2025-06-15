@@ -2,24 +2,37 @@
 import Navbar from "@/components/Navbar";
 import CourseCard from "@/components/CourseCard";
 import { Users, CheckCircle, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-const featuredCourse = {
-  image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=620&q=80",
-  title: "How ESG works in business",
-  instructor: "Sustainable Team",
-  enrolled: 125,
-  nextRun: "Jul 6",
-  price: "USD 5.00",
-  onView: () => window.location.href = "/courses",
-};
+const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=620&q=80";
 
 export default function Index() {
+  const [featuredCourse, setFeaturedCourse] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchFeaturedCourse() {
+      const { data, error } = await supabase.from("courses").select("*").order("id").limit(1).single();
+      if (data) {
+        setFeaturedCourse({
+          image: DEFAULT_COURSE_IMAGE, // Placeholder; could fetch from a column if available
+          title: data.title,
+          instructor: "Sustainable Team",
+          enrolled: 125, // Hardcoded for now; could be dynamic if enrollments table is used
+          nextRun: "Jul 6", // Placeholder; you can update if you have a date for next session
+          price: data.price ? `USD ${parseFloat(data.price).toFixed(2)}` : "USD 0.00",
+          onView: () => window.location.href = "/courses",
+        });
+      }
+      setLoading(false);
+    }
+    fetchFeaturedCourse();
+  }, []);
+
   return (
     <div className="w-full min-h-screen flex flex-col bg-[#FCFDF7]">
-      {/* Slim header */}
       <Navbar />
-
       {/* Hero section */}
       <section className="relative flex flex-col items-center justify-center text-center px-4 pt-28 pb-14 bg-no-repeat bg-cover" style={{
         backgroundImage: "url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1050&q=40')",
@@ -43,7 +56,13 @@ export default function Index() {
         <h2 className="text-2xl font-semibold text-white mb-8">Featured Courses</h2>
         <div className="w-full flex justify-center">
           <div className="max-w-xs">
-            <CourseCard {...featuredCourse} />
+            {loading ? (
+              <div className="text-white">Loading...</div>
+            ) : featuredCourse ? (
+              <CourseCard {...featuredCourse} />
+            ) : (
+              <div className="text-white">No featured course available.</div>
+            )}
           </div>
         </div>
       </section>
