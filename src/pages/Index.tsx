@@ -70,8 +70,8 @@ export default function Index() {
         </div>
         <div className="flex-1 flex justify-center items-center">
           <img
-            src="/lovable-uploads/aa796f54-d1cf-45e2-9066-df7142436b98.png"
-            alt="Community"
+            src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=850&q=80"
+            alt="Community of people collaborating"
             className="rounded-xl shadow-lg max-w-md w-full h-auto object-cover"
           />
         </div>
