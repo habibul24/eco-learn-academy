@@ -1,3 +1,4 @@
+
 import React from "react";
 import Navbar from "@/components/Navbar";
 import { useState, useEffect } from "react";
@@ -32,30 +33,7 @@ export default function MyCertificates() {
     }
   }, [user]);
 
-  const handleDownload = async (userName: string) => {
-    setDownloading(true);
-    try {
-      const res = await fetch("/functions/v1/generate-certificate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_name: userName }),
-      });
-      if (res.ok) {
-        // Download the image
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "certificate.png";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => window.URL.revokeObjectURL(url), 5000);
-      }
-    } finally {
-      setDownloading(false);
-    }
-  };
+  // Removed old handleDownload and its usage
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white w-full">
@@ -75,13 +53,14 @@ export default function MyCertificates() {
                 key={cert.id}
                 userName={user?.user_metadata?.full_name || user?.email || ""}
                 courseTitle={cert.courseTitle}
-                onDownload={() => handleDownload(user?.user_metadata?.full_name || user?.email || "")}
               />
             ))
           )}
-          {downloading && <div className="text-green-800 font-semibold mt-2">Generating certificate...</div>}
+          {/* Optionally you can show a message or loader if needed */}
+          {/* {downloading && <div className="text-green-800 font-semibold mt-2">Generating certificate...</div>} */}
         </div>
       </main>
     </div>
   );
 }
+
