@@ -36,7 +36,7 @@ export function assertSupabaseClient(client: any) {
       "stack:", new Error().stack,
       "keys:", Object.keys(client || {})
     );
-    if (window) window.__lastSupabaseClientError = JSON.stringify({
+    if (window) (window as any).__lastSupabaseClientError = JSON.stringify({
       typeof: typeof client,
       keys: Object.keys(client || {}),
       stack: new Error().stack,
