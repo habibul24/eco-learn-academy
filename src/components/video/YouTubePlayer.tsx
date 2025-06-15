@@ -8,7 +8,7 @@ import type { User } from "@supabase/supabase-js";
 type YouTubePlayerProps = {
   videoId: string;
   courseTitle: string;
-  user: User | null;
+  user: any;
   videoDbId?: number;
   onComplete?: () => void;
 };
@@ -73,67 +73,11 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
             onReady: () => {
               setPlayerReady(true);
             },
-            onStateChange: async (event: any) => {
-              // 0: ended, 1: playing, 2: paused, etc.
+            onStateChange: (event: any) => {
+              // 0: ended
               if (event.data === 0 && !completeMarkRef.current) {
                 completeMarkRef.current = true;
-
-                try {
-                  console.log("[YouTubePlayer] Attempting to upsert watched progress for:", { videoId: videoDbId, userId: user.id });
-                  
-                  const result = await withRetry(async () => {
-                    validateSupabaseClient();
-                    // ADDED: wrap the upsert with extra error debug logs
-                    const upsertObj = {
-                      user_id: user.id,
-                      video_id: videoDbId,
-                      watched: true,
-                      progress_percentage: 100,
-                    };
-                    const { error, data } = await supabase
-                      .from("user_progress")
-                      .upsert(upsertObj)
-                      .select();
-
-                    if (error) {
-                      console.error("[YouTubePlayer][UPSERT] Database error:", error, "For upsert obj:", upsertObj);
-                      // Show toast immediately if error
-                      toast({
-                        variant: "destructive",
-                        title: "Progress save failed (upsert error)!",
-                        description: error.message || "Could not save your progress.",
-                      });
-                      throw error; // Also throw so withRetry handles it
-                    } else {
-                      console.log("[YouTubePlayer][UPSERT] Success! Data:", data);
-                    }
-
-                    return data;
-                  });
-
-                  if (!result || result.length === 0) {
-                    console.warn("[YouTubePlayer][UPSERT] No data returned after upsert");
-                    toast({
-                      variant: "destructive",
-                      title: "Progress not saved",
-                      description: "Could not save your progress. You may not be enrolled or signed in properly.",
-                    });
-                  } else {
-                    console.log("[YouTubePlayer][UPSERT] Progress saved successfully:", result);
-                    toast({
-                      title: "Video completed!",
-                      description: "Your progress has been saved.",
-                    });
-                    if (onComplete) onComplete();
-                  }
-                } catch (e) {
-                  console.error("[YouTubePlayer][UPSERT] Final error after retries:", e);
-                  toast({
-                    variant: "destructive",
-                    title: "Progress save failed (upsert failed)!",
-                    description: "Could not save your progress. Please try refreshing the page.",
-                  });
-                }
+                if (onComplete) onComplete(); // Now delegates save to outer button
               }
             },
             onError: (err: any) => {
