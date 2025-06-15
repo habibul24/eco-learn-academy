@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { SupabaseClient } from "@supabase/supabase-js";
-
 export function useCoursePayment(courseId: number, user: any, isEnrolled: boolean) {
   const [paying, setPaying] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"paypal" | "stripe">("paypal");

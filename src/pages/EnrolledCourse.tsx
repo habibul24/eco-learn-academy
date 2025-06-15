@@ -1,4 +1,3 @@
-
 import React from "react";
 import Navbar from "@/components/Navbar";
 import CourseContentSidebar from "@/components/CourseContentSidebar";
@@ -8,8 +7,16 @@ import { useCourseDetailData } from "@/hooks/useCourseDetailData";
 import { Loader2 } from "lucide-react";
 import CourseProgress from "@/components/CourseProgress";
 import CourseDetailHeader from "@/components/CourseDetailHeader";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
+
+// Debug: Log and check validity of supabase client
+console.log("[debug:enrolled-course] supabase import is", supabase);
+if (!supabase || typeof supabase.from !== "function") {
+  // eslint-disable-next-line no-console
+  console.error("[debug:enrolled-course] Imported supabase client is invalid!", supabase);
+}
 
 function extractSection(desc: string, title: string) {
   const lines = desc.split("\n");
@@ -29,6 +36,21 @@ export default function EnrolledCourse() {
   const [allWatched, setAllWatched] = React.useState(false);
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [activeVideoUrl, setActiveVideoUrl] = React.useState<string | null>(videos.length > 0 ? videos[0].video_url : null);
+
+  // Warn in UI if supabase client is invalid
+  if (!supabase || typeof supabase.from !== "function") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-red-50">
+        <div className="text-xl font-bold text-red-700 mb-6">Critical error: Supabase client is not valid</div>
+        <div className="text-red-700 text-base max-w-lg mx-auto">
+          The application is currently unable to connect to the database. Please contact your administrator.<br />
+          <span className="block mt-4">
+            This usually means the Supabase client is not imported or initialized correctly.
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   React.useEffect(() => {
     setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);

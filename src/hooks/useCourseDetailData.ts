@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useParams } from "react-router-dom";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { SupabaseClient } from "@supabase/supabase-js";
-
 type Video = {
   id: number;
   chapter_id: number;
@@ -26,11 +25,9 @@ type Course = {
   description: string;
   price: number;
 };
-
 export function useCourseDetailData() {
   const { id } = useParams<{ id: string }>();
   const { user, loading: authLoading } = useAuthUser();
-
   const [course, setCourse] = useState<Course | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
