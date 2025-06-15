@@ -28,12 +28,36 @@ function createSupabaseClient(): SupabaseClient<Database> {
   }
 }
 
-// Create and export the client
-export const supabase = createSupabaseClient();
+// Create the client instance ONCE
+const _supabaseClient = createSupabaseClient();
 
-// Runtime validation helper
+// Freeze the client to prevent modification
+Object.freeze(_supabaseClient);
+
+// Export with getter to prevent reassignment
+export const supabase: SupabaseClient<Database> = _supabaseClient;
+
+// Prevent any external code from modifying the supabase export
+Object.defineProperty(exports, 'supabase', {
+  value: _supabaseClient,
+  writable: false,
+  configurable: false
+});
+
+// Runtime validation helper with detailed logging
 export function validateSupabaseClient(): void {
-  if (!supabase || typeof supabase.from !== "function") {
-    throw new Error("Supabase client is invalid - application state corrupted");
+  if (!supabase) {
+    console.error("[FATAL] Supabase client is null/undefined");
+    throw new Error("Supabase client is invalid - null or undefined");
+  }
+  
+  if (typeof supabase !== 'object') {
+    console.error("[FATAL] Supabase client is not an object, got:", typeof supabase, supabase);
+    throw new Error(`Supabase client is invalid - expected object, got ${typeof supabase}`);
+  }
+  
+  if (typeof supabase.from !== "function") {
+    console.error("[FATAL] Supabase client missing 'from' method, available methods:", Object.keys(supabase));
+    throw new Error("Supabase client is invalid - missing 'from' method");
   }
 }

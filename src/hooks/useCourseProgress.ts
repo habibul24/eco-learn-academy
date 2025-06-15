@@ -21,8 +21,13 @@ export function useCourseProgress({
 
     async function fetchProgress() {
       try {
-        // Validate client before any database operations
+        // Strict validation before any database operations
         validateSupabaseClient();
+        
+        // Additional runtime check
+        if (!supabase || typeof supabase.from !== 'function') {
+          throw new Error("Supabase client validation failed");
+        }
         
         const { data: watched, error } = await supabase
           .from("user_progress")
