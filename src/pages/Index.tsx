@@ -1,4 +1,3 @@
-
 import Navbar from "@/components/Navbar";
 import CourseCard from "@/components/CourseCard";
 import { Users, CheckCircle, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
@@ -12,18 +11,28 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Debugging: Ensure supabase is available
+    console.log("[debug] supabase is", supabase);
+
     async function fetchFeaturedCourse() {
-      const { data, error } = await supabase.from("courses").select("*").order("id").limit(1).single();
-      if (data) {
-        setFeaturedCourse({
-          image: DEFAULT_COURSE_IMAGE,
-          title: data.title,
-          instructor: "Sustainable Team",
-          enrolled: 125,
-          nextRun: "Jul 6",
-          price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
-          onView: () => window.location.href = `/course/${data.id}`,
-        });
+      try {
+        const { data, error } = await supabase.from("courses").select("*").order("id").limit(1).single();
+        if (error) {
+          console.error("[debug] Error fetching course:", error);
+        }
+        if (data) {
+          setFeaturedCourse({
+            image: DEFAULT_COURSE_IMAGE,
+            title: data.title,
+            instructor: "Sustainable Team",
+            enrolled: 125,
+            nextRun: "Jul 6",
+            price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
+            onView: () => window.location.href = `/course/${data.id}`,
+          });
+        }
+      } catch (e) {
+        console.error("[debug] Exception fetching course:", e);
       }
       setLoading(false);
     }
