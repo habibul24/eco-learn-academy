@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Youtube } from "lucide-react";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 type Chapter = {
   id: number;
   title: string;
-  order_index: number; // FIX: Add order_index property
+  order_index: number;
   description?: string | null;
 };
 
@@ -24,6 +25,11 @@ type Props = {
   firstVideoUrl: string | null;
   activeVideoUrl: string | null;
   setActiveVideoUrl: (value: string | null) => void;
+
+  // New props for payment/enrollment
+  isEnrolled: boolean;
+  paying: boolean;
+  onBuyCourse: () => void;
 };
 
 export default function CourseContentSidebar({
@@ -32,14 +38,15 @@ export default function CourseContentSidebar({
   firstVideoUrl,
   activeVideoUrl,
   setActiveVideoUrl,
+  isEnrolled,
+  paying,
+  onBuyCourse,
 }: Props) {
-  // Find the very first video (lowest chapter order_index, then lowest video id)
   let firstVideoId: number | null = null;
   let sortedChapters = chapters.slice().sort((a, b) => a.order_index - b.order_index);
   for (const chapter of sortedChapters) {
     const chapterVideos = videos.filter(v => v.chapter_id === chapter.id);
     if (chapterVideos.length > 0) {
-      // Get the video with the lowest id in this chapter (if multiple videos per chapter)
       chapterVideos.sort((a, b) => a.id - b.id);
       firstVideoId = chapterVideos[0].id;
       break;
@@ -96,10 +103,16 @@ export default function CourseContentSidebar({
           );
         })}
       </Accordion>
-      {/* Remove the custom class and just use the yellow default Button */}
-      <Button className="w-full font-semibold text-lg mt-6 transition-colors rounded shadow">
-        Buy Course
+      <Button
+        className="w-full font-semibold text-lg mt-6 transition-colors rounded shadow"
+        onClick={onBuyCourse}
+        disabled={isEnrolled || paying}
+        variant={isEnrolled ? "secondary" : "default"}
+        size="lg"
+      >
+        {isEnrolled ? "You are enrolled in this course!" : "Buy Course"}
       </Button>
     </div>
   );
 }
+

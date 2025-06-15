@@ -30,10 +30,10 @@ function extractSection(desc: string, title: string) {
 
 export default function CourseDetail() {
   const { course, chapters, videos, loading, isEnrolled, user } = useCourseDetailData();
-  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const [activeVideoUrl, setActiveVideoUrl] = React.useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Progress calculation logic — moved to top!
+  // Progress calculation logic — ensure hooks are defined top-level
   const [progress, setProgress] = React.useState(0);
   const [allWatched, setAllWatched] = React.useState(false);
 
@@ -198,25 +198,6 @@ export default function CourseDetail() {
               </ul>
             </div>
           )}
-          {!payment.paying && (
-            <div className="mb-6">
-              {isEnrolled ? (
-                <Button variant="secondary" size="lg" className="w-full" disabled>
-                  You are enrolled in this course!
-                </Button>
-              ) : (
-                <Button
-                  variant="default"
-                  size="lg"
-                  className="w-full"
-                  onClick={payment.startPurchase}
-                  disabled={payment.paying}
-                >
-                  Buy Course
-                </Button>
-              )}
-            </div>
-          )}
         </div>
         {/* Right: Sidebar content */}
         <div className="flex-grow max-w-lg w-full">
@@ -227,6 +208,9 @@ export default function CourseDetail() {
               firstVideoUrl={firstVideoUrl}
               activeVideoUrl={activeVideoUrl}
               setActiveVideoUrl={setActiveVideoUrl}
+              isEnrolled={isEnrolled}
+              paying={payment.paying}
+              onBuyCourse={payment.startPurchase}
             />
           </div>
         </div>
