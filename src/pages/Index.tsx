@@ -21,7 +21,7 @@ export default function Index() {
           instructor: "Sustainable Team",
           enrolled: 125, // Hardcoded for now; could be dynamic if enrollments table is used
           nextRun: "Jul 6", // Placeholder; you can update if you have a date for next session
-          price: data.price ? `USD ${parseFloat(data.price).toFixed(2)}` : "USD 0.00",
+          price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
           onView: () => window.location.href = "/courses",
         });
       }
