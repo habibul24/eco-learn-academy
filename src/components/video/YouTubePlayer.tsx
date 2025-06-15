@@ -47,7 +47,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     };
   }, []);
 
-  // Poll video time to detect ALMOST finished
+  // Poll video time to detect ALMOST finished + DEBUG LOGS
   useEffect(() => {
     let poller: NodeJS.Timeout | null = null;
 
@@ -63,12 +63,19 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       try {
         const duration = playerRef.current.getDuration();
         const current = playerRef.current.getCurrentTime();
+        const left = duration > 0 ? duration - current : null;
+
+        // DEBUG: Log each check to see timing progression near end
+        console.log("[YouTubePlayer] polling current/duration:", {current, duration, left});
+
         if (duration > 0) {
-          const left = duration - current;
-          // If less than 2 seconds remain, count as completed
-          if ((left < 2 && duration > 15) || force) {
-            if (onComplete) onComplete();
-            completeMarkRef.current = true;
+          // If less than 2.5 seconds remain, count as completed (+forgiveness)
+          if ((left !== null && left < 2.5 && duration > 15) || force) {
+            if (!completeMarkRef.current) {
+              console.log("[YouTubePlayer] TRIGGERING onComplete", {current, duration, left, force});
+              if (onComplete) onComplete();
+              completeMarkRef.current = true;
+            }
           }
         }
       } catch (e) {
@@ -77,12 +84,11 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     }
 
     if (playerReady) {
-      poller = setInterval(() => maybeTriggerComplete(), 1200);
+      poller = setInterval(() => maybeTriggerComplete(), 500); // interval now 500ms
     }
     return () => {
       if (poller) clearInterval(poller);
     };
-    // Only start polling when player is ready, restart on videoId change.
   }, [playerReady, onComplete, videoId]);
 
   useEffect(() => {
