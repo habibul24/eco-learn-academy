@@ -123,7 +123,7 @@ export default function CourseDetail() {
               </ul>
             </div>
           )}
-          {!payment.loading && (
+          {!payment.paying && (
             <div className="mb-6">
               {isEnrolled ? (
                 <Button variant="secondary" size="lg" className="w-full" disabled>

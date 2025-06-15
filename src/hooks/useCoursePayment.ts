@@ -84,6 +84,7 @@ export function useCoursePayment(courseId: number, user: any, isEnrolled: boolea
 
   return {
     paying,
+    setPaying,
     paymentMethod,
     setPaymentMethod,
     showPaymentModal,
