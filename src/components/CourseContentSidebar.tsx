@@ -103,16 +103,19 @@ export default function CourseContentSidebar({
           );
         })}
       </Accordion>
-      <Button
-        className="w-full font-semibold text-lg mt-6 transition-colors rounded shadow"
-        onClick={onBuyCourse}
-        disabled={isEnrolled || paying}
-        variant={isEnrolled ? "secondary" : "default"}
-        size="lg"
-      >
-        {isEnrolled ? "You are enrolled in this course!" : "Buy Course"}
-      </Button>
+      {/* Only show Buy Course button if NOT enrolled */}
+      {!isEnrolled && (
+        <Button
+          className="w-full font-semibold text-lg mt-6 transition-colors rounded shadow"
+          onClick={onBuyCourse}
+          disabled={isEnrolled || paying}
+          variant={isEnrolled ? "secondary" : "default"}
+          size="lg"
+        >
+          Buy Course
+        </Button>
+      )}
+      {/* Remove "You are enrolled in this course!" indicator for enrolled users as requested */}
     </div>
   );
 }
-

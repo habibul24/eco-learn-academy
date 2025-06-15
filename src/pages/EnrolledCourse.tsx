@@ -4,12 +4,10 @@ import Navbar from "@/components/Navbar";
 import CourseContentSidebar from "@/components/CourseContentSidebar";
 import CourseVideoPlayer from "@/components/CourseVideoPlayer";
 import CourseSidebarToggle from "@/components/CourseSidebarToggle";
-import { useParams, useNavigate } from "react-router-dom";
 import { useCourseDetailData } from "@/hooks/useCourseDetailData";
 import { Loader2 } from "lucide-react";
 import CourseProgress from "@/components/CourseProgress";
 import CourseDetailHeader from "@/components/CourseDetailHeader";
-import CourseDescriptionSections from "@/components/CourseDescriptionSections";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -73,20 +71,18 @@ export default function EnrolledCourse() {
   }
 
   const priceFormatted = `HKD ${course.price ? course.price.toFixed(2) : "0.00"}`;
-  const whoFor = extractSection(course.description, "Who is this course for?");
-  const objectives = extractSection(course.description, "Learning Objectives");
   const firstVideoUrl = videos.length > 0 ? videos[0].video_url : null;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F9F8F3]">
+    <div className="flex flex-col min-h-screen bg-[#FCF6E8]">
       <Navbar />
-      <div className="max-w-7xl w-full mx-auto px-2 md:px-8 flex-1 flex flex-col pt-24 pb-12">
+      <div className="max-w-7xl w-full mx-auto px-2 md:px-8 flex-1 flex flex-col pt-20 pb-12">
         <CourseDetailHeader title={course.title} priceFormatted={priceFormatted} />
         <CourseProgress progress={progress} allWatched={allWatched} />
-        <div className="flex gap-6">
+        <div className="flex gap-4 mt-2">
           {/* Sidebar */}
           {sidebarOpen && (
-            <aside className="w-full max-w-[340px]">
+            <aside className="w-full max-w-[340px] min-w-[250px] pt-1 transition-all duration-200">
               <CourseContentSidebar
                 chapters={chapters}
                 videos={videos}
@@ -99,8 +95,11 @@ export default function EnrolledCourse() {
               />
             </aside>
           )}
-          <div className="flex-1 min-w-0">
-            <CourseSidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+          <div className="flex-1 min-w-0 relative">
+            {/* Place the toggle button next to sidebar or float when collapsed */}
+            <div className="absolute left-[-22px] top-2 z-10">
+              <CourseSidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+            </div>
             <CourseVideoPlayer
               videoUrl={activeVideoUrl}
               courseTitle={course.title}
@@ -112,13 +111,7 @@ export default function EnrolledCourse() {
               <h3 className="font-semibold text-green-900 mb-2">Video Transcript</h3>
               <div className="text-gray-800 text-base">Transcript will appear here soon. (Placeholder)</div>
             </div>
-            <div className="mt-8">
-              <CourseDescriptionSections
-                description={course.description}
-                whoFor={whoFor}
-                objectives={objectives}
-              />
-            </div>
+            {/* CourseDescriptionSections removed per request */}
           </div>
         </div>
       </div>
