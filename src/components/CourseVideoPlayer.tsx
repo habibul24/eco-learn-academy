@@ -4,6 +4,29 @@ import { supabase, validateSupabaseClient } from "@/integrations/supabase/client
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useToast } from "@/components/ui/use-toast";
 
+// Retry helper function for database operations
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 1000
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      console.warn(`[VideoPlayer] Attempt ${attempt} failed:`, error);
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
 /**
  * Extract YouTube video ID from a YouTube URL (support various url formats)
  */
@@ -98,46 +121,52 @@ export default function CourseVideoPlayer({
                 completeMarkRef.current = true;
 
                 try {
-                  // Validate client before database operation
-                  validateSupabaseClient();
+                  console.log("[VideoPlayer] Marking video as watched:", { videoId, userId: user.id });
                   
-                  const { error, data } = await supabase
-                    .from("user_progress")
-                    .upsert({
-                      user_id: user.id,
-                      video_id: videoId,
-                      watched: true,
-                      progress_percentage: 100,
-                    })
-                    .select();
+                  const result = await withRetry(async () => {
+                    // Validate client before database operation
+                    validateSupabaseClient();
+                    
+                    const { error, data } = await supabase
+                      .from("user_progress")
+                      .upsert({
+                        user_id: user.id,
+                        video_id: videoId,
+                        watched: true,
+                        progress_percentage: 100,
+                      })
+                      .select();
 
-                  if (error) {
-                    console.error("[VideoPlayer] Error marking video watched:", error);
+                    if (error) {
+                      console.error("[VideoPlayer] Database error:", error);
+                      throw new Error(`Progress save failed: ${error.message}`);
+                    }
+
+                    return data;
+                  });
+
+                  if (!result || result.length === 0) {
+                    console.warn("[VideoPlayer] No data returned after upsert");
                     toast({
                       variant: "destructive",
-                      title: "Error marking video as completed",
-                      description: error.message + (error.code ? ` (code: ${error.code})` : ""),
-                    });
-                  } else if (!data || data.length === 0) {
-                    toast({
-                      variant: "destructive",
-                      title: "Progress not saved!",
-                      description: "Your progress was not recorded. This may happen if you are not enrolled, not signed in, or due to access issues.",
+                      title: "Progress not saved",
+                      description: "Could not save your progress. You may not be enrolled or signed in properly.",
                     });
                   } else {
+                    console.log("[VideoPlayer] Progress saved successfully:", result);
                     toast({
-                      title: "Video marked as watched!",
-                      description: "Your progress has been updated for this video.",
+                      title: "Video completed!",
+                      description: "Your progress has been saved.",
                     });
                     if (onComplete) onComplete();
                   }
                 } catch (e) {
+                  console.error("[VideoPlayer] Final error after retries:", e);
                   toast({
                     variant: "destructive",
-                    title: "Database error",
-                    description: "Could not save progress - please refresh the page and try again.",
+                    title: "Progress save failed",
+                    description: "Could not save your progress. Please try refreshing the page.",
                   });
-                  console.error("[VideoPlayer] Exception during progress update:", e);
                 }
               }
             },
