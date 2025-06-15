@@ -1,9 +1,15 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useParams } from "react-router-dom";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { SupabaseClient } from "@supabase/supabase-js";
+
+// Runtime supabase client integrity check
+if (!supabase || typeof supabase.from !== "function") {
+  // eslint-disable-next-line no-console
+  console.error("[useCourseDetailData] Invalid supabase client!", supabase);
+}
+
 type Video = {
   id: number;
   chapter_id: number;
@@ -25,6 +31,7 @@ type Course = {
   description: string;
   price: number;
 };
+
 export function useCourseDetailData() {
   const { id } = useParams<{ id: string }>();
   const { user, loading: authLoading } = useAuthUser();

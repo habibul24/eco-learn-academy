@@ -1,9 +1,15 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 import { SupabaseClient } from "@supabase/supabase-js";
+
+// Runtime supabase client integrity check
+if (!supabase || typeof supabase.from !== "function") {
+  // eslint-disable-next-line no-console
+  console.error("[useCoursePayment] Invalid supabase client!", supabase);
+}
+
 export function useCoursePayment(courseId: number, user: any, isEnrolled: boolean) {
   const [paying, setPaying] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"paypal" | "stripe">("paypal");

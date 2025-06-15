@@ -9,6 +9,12 @@ import CourseProgress from "@/components/CourseProgress";
 import CourseDetailHeader from "@/components/CourseDetailHeader";
 import { supabase } from "@/integrations/supabase/client";
 
+// Runtime supabase client integrity check
+if (!supabase || typeof supabase.from !== "function") {
+  // eslint-disable-next-line no-console
+  console.error("[EnrolledCourse] Invalid supabase client!", supabase);
+}
+
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
 // Debug: Log and check validity of supabase client
