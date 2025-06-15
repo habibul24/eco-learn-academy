@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
@@ -8,8 +9,6 @@ import { useToast } from "@/components/ui/use-toast";
  */
 function getYoutubeVideoId(url?: string | null): string | null {
   if (!url) return null;
-  // Typical formats: https://www.youtube.com/watch?v=VIDEO_ID
-  // or https://youtu.be/VIDEO_ID
   const youtubeRegex =
     /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
   const match = url.match(youtubeRegex);
@@ -24,7 +23,6 @@ type CourseVideoPlayerProps = {
   onComplete?: () => void;
 };
 
-// Small loader for player
 const PlayerLoading = () => (
   <div className="w-full h-full flex items-center justify-center text-green-900 bg-white/50">
     Loading video...
@@ -44,17 +42,16 @@ export default function CourseVideoPlayer({
   const { toast } = useToast();
   const ytVideoId = getYoutubeVideoId(videoUrl ?? "");
   const [playerReady, setPlayerReady] = React.useState(false);
-  // Used to prevent duplicate onComplete upserts
   const completeMarkRef = useRef(false);
 
   useEffect(() => {
     completeMarkRef.current = false;
-  }, [ytVideoId, videoId, user?.id]); // Reset on video/user change
+  }, [ytVideoId, videoId, user?.id]);
 
   // Load YouTube IFrame API script only if it's a youtube video
   useEffect(() => {
     if (!ytVideoId) return;
-    if ((window as any).YT && (window as any).YT.Player) return; // already loaded
+    if ((window as any).YT && (window as any).YT.Player) return;
 
     const scriptTag = document.createElement("script");
     scriptTag.src = "https://www.youtube.com/iframe_api";
@@ -62,19 +59,40 @@ export default function CourseVideoPlayer({
     document.body.appendChild(scriptTag);
 
     return () => {
-      // Prevent duplicate scripts
       document.body.removeChild(scriptTag);
     };
   }, [ytVideoId]);
 
-  // Create the YouTube player and listen for events
   useEffect(() => {
-    if (!ytVideoId || !user || !videoId) return;
+    if (!ytVideoId || !user || !videoId) {
+      console.log("[VideoPlayer] Early exit: ytVideoId, user, or videoId missing", {
+        ytVideoId,
+        user,
+        videoId
+      });
+      return;
+    }
+
+    // Enhanced debug: check for and log the containerRef
+    if (!containerRef.current) {
+      console.error("[VideoPlayer] containerRef.current is null! Cannot initialize player.");
+      toast({
+        variant: "destructive",
+        title: "Error loading video player",
+        description: "The video container could not be found. Try reloading.",
+      });
+      return;
+    }
 
     const onYouTubeIframeAPIReady = () => {
+      // Remove old player instance if exists
       if (playerRef.current && typeof playerRef.current.destroy === "function") {
         playerRef.current.destroy();
+        playerRef.current = null;
       }
+      // eslint-disable-next-line no-console
+      console.log("[VideoPlayer] Initializing YouTube Player with videoId:", ytVideoId, "on element:", containerRef.current);
+
       playerRef.current = new (window as any).YT.Player(
         containerRef.current,
         {
@@ -87,12 +105,20 @@ export default function CourseVideoPlayer({
             autoplay: 0,
           },
           events: {
-            onReady: () => setPlayerReady(true),
+            onReady: () => {
+              setPlayerReady(true);
+              // eslint-disable-next-line no-console
+              console.log("[VideoPlayer] YouTube player is ready");
+            },
             onStateChange: async (event: any) => {
-              // State 0 means ended, see: https://developers.google.com/youtube/iframe_api_reference#onStateChange
+              // eslint-disable-next-line no-console
+              console.log("[VideoPlayer] onStateChange fired", { data: event.data });
+              // 0: ended, 1: playing, 2: paused, etc.
               if (event.data === 0 && !completeMarkRef.current) {
-                completeMarkRef.current = true; // mark as completed to avoid multiple upserts
+                completeMarkRef.current = true;
+                // eslint-disable-next-line no-console
                 console.log("[VideoPlayer] Video ended, marking watched for uid:", user.id, "videoId:", videoId);
+
                 const { error, data } = await supabase
                   .from("user_progress")
                   .upsert({
@@ -102,28 +128,41 @@ export default function CourseVideoPlayer({
                     progress_percentage: 100,
                   })
                   .select();
+
+                // eslint-disable-next-line no-console
                 if (error) {
+                  console.error("[VideoPlayer] Error marking video watched:", error);
                   toast({
                     variant: "destructive",
                     title: "Error marking video as completed",
                     description: error.message,
                   });
-                  console.error("[VideoPlayer] Error marking video watched:", error);
                 } else {
                   toast({
                     title: "Video marked as watched!",
                     description: "Your progress has been updated for this video.",
                   });
+                  // eslint-disable-next-line no-console
                   console.log("[VideoPlayer] Marked video as watched:", data);
                   if (onComplete) onComplete();
                 }
               }
+            },
+            onError: (err: any) => {
+              toast({
+                variant: "destructive",
+                title: "Video player error",
+                description: `Could not play YouTube video (${err?.data || err})`,
+              });
+              // eslint-disable-next-line no-console
+              console.error("[VideoPlayer] YouTube player error:", err);
             },
           },
         }
       );
     };
 
+    // If the API is already loaded
     if ((window as any).YT && (window as any).YT.Player) {
       onYouTubeIframeAPIReady();
     } else {
@@ -139,7 +178,7 @@ export default function CourseVideoPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ytVideoId, user, videoId]);
 
-  // For non-YouTube videos, embed with iframe as before
+  // For non-YouTube videos, embed as plain iframe
   if (videoUrl && !ytVideoId) {
     return (
       <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex justify-center items-center">
@@ -167,7 +206,6 @@ export default function CourseVideoPlayer({
             {!playerReady && <PlayerLoading />}
           </div>
         ) : (
-          // unreachable here but fallback
           <iframe
             src={videoUrl}
             title={courseTitle}
@@ -185,3 +223,4 @@ export default function CourseVideoPlayer({
     </div>
   );
 }
+
