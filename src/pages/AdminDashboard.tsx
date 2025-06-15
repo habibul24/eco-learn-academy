@@ -62,7 +62,36 @@ export default function AdminDashboard() {
   // 2. Fetch stats for cards/table, only after rolesData confirmed
   const statsQuery = useQuery({
     queryKey: ["admin-stats"],
-    queryFn: fetchAdminStats,
+    queryFn: async () => {
+      // Added debug for enrollments fetch
+      const [{ data: courses, error: coursesError }, 
+             { data: enrollments, error: enrollmentsError },
+             { data: completions, error: completionsError },
+             { data: userRoles, error: userRolesError }
+      ] = await Promise.all([
+        supabase.from("courses").select("*"),
+        supabase.from("course_enrollments").select("*"),
+        supabase.from("user_progress").select("*"),
+        supabase.from("user_roles").select("*"),
+      ]);
+      if (coursesError) console.error("Courses error:", coursesError);
+      if (enrollmentsError) console.error("Enrollments error:", enrollmentsError);
+      if (completionsError) console.error("Completions error:", completionsError);
+      if (userRolesError) console.error("UserRoles error:", userRolesError);
+
+      // Log the actual fetched enrollments
+      console.log("Fetched ENROLLMENTS (raw):", enrollments);
+
+      // Count only users with role 'user', not 'admin'
+      const totalUsers = userRoles ? userRoles.filter(r => r.role === 'user').length : 0;
+
+      return {
+        courses: courses ?? [],
+        enrollments: enrollments ?? [],
+        completions: completions ?? [],
+        totalUsers,
+      };
+    },
     enabled: !!isAdmin, // Only run when isAdmin is true
   });
 
