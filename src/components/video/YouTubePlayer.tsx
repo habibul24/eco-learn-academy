@@ -15,6 +15,16 @@ type YouTubePlayerProps = {
   onComplete?: () => void;
 };
 
+// --- DEBUG header component
+const DebugHeader = ({ videoId, videoDbId, user }) => (
+  <div className="bg-red-300 text-red-900 text-lg font-bold text-center p-3 w-full rounded mb-3 border-2 border-red-600">
+    DEBUG: YouTubePlayer ACTIVE<br/>
+    videoId: <span className="font-mono">{videoId}</span> &nbsp; | &nbsp;
+    videoDbId: <span className="font-mono">{videoDbId ?? "null"}</span> &nbsp; | &nbsp;
+    user: <span className="font-mono">{user?.id ?? "null"}</span>
+  </div>
+);
+
 export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   videoId,
   courseTitle,
@@ -64,7 +74,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         typeof playerRef.current.getDuration !== "function" ||
         completeMarkRef.current
       ) {
-        // Add debug for current player state
         console.log("[YouTubePlayer] Skipping poll: playerRef", playerRef.current, "playerReady", playerReady, "completeMarkRef", completeMarkRef.current);
         return;
       }
@@ -72,11 +81,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         const duration = playerRef.current.getDuration();
         const current = playerRef.current.getCurrentTime();
         const left = duration > 0 ? duration - current : null;
-
-        // DEBUG: Log each check to see timing progression near end
         console.log("[YouTubePlayer] polling current/duration:", {current, duration, left});
 
-        // If stuck just shy of the end, make sure user can still mark complete!
         if (duration > 0 && current > 0 && (duration - current < 12 && duration - current > 2.5)) {
           if (!debugShowComplete) {
             setDebugShowComplete(true);
@@ -85,7 +91,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         }
 
         if (duration > 0) {
-          // If less than 2.5 seconds remain, count as completed (+forgiveness)
           if ((left !== null && left < 2.5 && duration > 15) || force) {
             if (!completeMarkRef.current) {
               console.log("[YouTubePlayer] TRIGGERING onComplete", {current, duration, left, force});
@@ -102,7 +107,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 
     if (playerReady) {
       console.log("[YouTubePlayer] Polling started — playerReady");
-      poller = setInterval(() => maybeTriggerComplete(), 500); // interval now 500ms
+      poller = setInterval(() => maybeTriggerComplete(), 500);
     } else {
       console.log("[YouTubePlayer] Polling NOT started, playerReady?", playerReady);
     }
@@ -118,7 +123,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     }
 
     const onYouTubeIframeAPIReady = () => {
-      // Remove old player instance if exists
       if (playerRef.current && typeof playerRef.current.destroy === "function") {
         playerRef.current.destroy();
         playerRef.current = null;
@@ -141,7 +145,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
               console.log("[YouTubePlayer] Player ready", playerRef.current);
             },
             onStateChange: (event: any) => {
-              // 0: ended
               if (event.data === 0 && !completeMarkRef.current) {
                 completeMarkRef.current = true;
                 if (onComplete) onComplete();
@@ -162,7 +165,6 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       );
     };
 
-    // If the API is already loaded
     if ((window as any).YT && (window as any).YT.Player) {
       onYouTubeIframeAPIReady();
     } else {
@@ -177,11 +179,24 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     };
   }, [videoId, user, videoDbId, toast, onComplete]);
 
-  // --- DEBUG: always print state on render and render fallback button if playerReady
+  // DEBUG: always print state on render and render fallback button if playerReady
   console.log("[YouTubePlayer RENDER] playerReady", playerReady, "debugShowComplete", debugShowComplete, "videoId", videoId, "videoDbId", videoDbId, "user?.id", user?.id);
 
   return (
     <div className="w-full h-full min-h-[260px] relative">
+      <DebugHeader videoId={videoId} videoDbId={videoDbId} user={user} />
+      {/* Super prominent fake always-visible complete button */}
+      <div className="my-6 flex flex-col items-center justify-center bg-yellow-200 border-4 border-yellow-500 p-4 rounded shadow-lg">
+        <button
+          onClick={() => {
+            alert("DEBUG: YouTubePlayer is mounted! (Button Clicked)");
+          }}
+          className="bg-red-600 text-white text-lg font-semibold px-6 py-3 rounded shadow-lg border-4 border-red-700 animate-pulse"
+        >
+          DEBUG: YouTubePlayer is rendered! (Click me)
+        </button>
+        <div className="mt-2 text-red-800 font-bold">If you see this, the YouTubePlayer is mounting.</div>
+      </div>
       <div
         ref={containerRef}
         className="w-full h-full min-h-[260px] rounded-lg"
