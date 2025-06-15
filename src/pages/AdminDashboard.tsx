@@ -7,15 +7,25 @@ import AdminSearchTable from "@/components/AdminSearchTable";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useNavigate } from "react-router-dom";
 
+// No "list_all_users" function in DB, so just return an empty array for users column/stats for now
 async function fetchAdminStats() {
-  // Get all stats: users, courses, enrollments, completions
-  const [{ data: users }, { data: courses }, { data: enrollments }, { data: completions }] = await Promise.all([
-    supabase.rpc("list_all_users"), // We'll use this below for the table; fallback to only fetching role table if RLS blocks
+  // Get all stats: courses, enrollments, completions
+  const [
+    { data: courses },
+    { data: enrollments },
+    { data: completions }
+  ] = await Promise.all([
     supabase.from("courses").select("*"),
     supabase.from("course_enrollments").select("*"),
     supabase.from("user_progress").select("*"),
   ]);
-  return { users: users ?? [], courses: courses ?? [], enrollments: enrollments ?? [], completions: completions ?? [] };
+  // 'users' is not implemented, but preserve the API so components don't crash
+  return {
+    users: [],
+    courses: courses ?? [],
+    enrollments: enrollments ?? [],
+    completions: completions ?? [],
+  };
 }
 
 export default function AdminDashboard() {
@@ -53,7 +63,8 @@ export default function AdminDashboard() {
     return <div className="min-h-screen flex items-center justify-center">Loading Admin Dashboard...</div>;
   }
 
-  const { courses, enrollments, completions } = statsQuery.data || {};
+  // Always ensure fallback to non-null arrays and defined structure
+  const { users = [], courses = [], enrollments = [], completions = [] } = statsQuery.data || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-20 pb-10 px-2 md:px-8">
@@ -61,9 +72,9 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold mb-6 text-green-900">Admin Dashboard</h1>
         {statsQuery.data && (
           <AdminSummaryCards
-            totalUsers={statsQuery.data.users?.length || 0}
-            totalCourses={courses?.length || 0}
-            totalEnrollments={enrollments?.length || 0}
+            totalUsers={users.length}
+            totalCourses={courses.length}
+            totalEnrollments={enrollments.length}
             completions={completions}
           />
         )}
@@ -78,7 +89,7 @@ export default function AdminDashboard() {
         </div>
         <AdminSearchTable
           search={search}
-          users={statsQuery.data.users}
+          users={users}
           courses={courses}
           enrollments={enrollments}
         />
