@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase, assertSupabaseClient } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -23,12 +22,17 @@ export function useCourseProgress({
 
   useEffect(() => {
     if (!user || !courseId) return;
-
     if (!isClientValid(supabase)) {
       setSupabaseError("Supabase client is not valid, cannot fetch progress.");
       setProgress(0);
       setAllWatched(false);
-      // Defensive: never run fetch
+      return;
+    }
+    // New: Defensive, don't proceed if supabase is null or typeof .from is not function
+    if (!supabase || typeof supabase.from !== "function") {
+      setSupabaseError("Supabase client is missing or corrupted.");
+      setProgress(0);
+      setAllWatched(false);
       return;
     }
     async function fetchProgress() {
@@ -46,13 +50,17 @@ export function useCourseProgress({
           setSupabaseError("Supabase query failed.");
           return;
         }
+        // DEBUG LOG: watched data, ids, etc.
+        console.log("[DEBUG: fetchProgress] watched data:", watched);
         const watchedIds = (watched || []).map((w) => w.video_id);
         const total = videos.length;
         const completed = videos.filter((v) => watchedIds.includes(v.id)).length;
         setProgress(total ? Math.round((completed / total) * 100) : 0);
         setAllWatched(completed === total && total > 0);
         setSupabaseError(null);
-        console.log("[useCourseProgress] Progress fetch: watchedIds", watchedIds, "completed", completed, "of", total);
+        // eslint-disable-next-line no-console
+        console.log("[DEBUG: fetchProgress] watchedIds:", watchedIds);
+        console.log("[DEBUG: fetchProgress] completed:", completed, "total:", total);
       } catch (err) {
         console.error("[useCourseProgress] Unexpected fetch error:", err);
         setProgress(0);

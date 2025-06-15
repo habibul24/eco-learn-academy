@@ -4,28 +4,27 @@ import type { Database } from './types';
 
 const SUPABASE_URL = "https://wufjtlnxiwipdlqsntqk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1Zmp0bG54aXdpcGRscXNudHFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NTExNjAsImV4cCI6MjA2NTUyNzE2MH0.kmfmAWpH_8IxIro1J1hd_mwbvwKCEYzaJhrOWY4Ohxw";
-
-// Prevent accidental reassignment or shadowing
-let _supabase: SupabaseClient<Database>;
+// Defensive: never reassign supabase
+let _supabase: SupabaseClient<Database> | null = null;
 try {
   _supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 } catch (err) {
   // eslint-disable-next-line no-console
   console.error("[supabase/client.ts] Could not create Supabase client!", err);
 }
-
-// Warn if _supabase is not correct
 if (!_supabase || typeof _supabase.from !== "function") {
   // eslint-disable-next-line no-console
   console.error("[supabase/client.ts] Exported Supabase client is invalid!", _supabase);
 }
-
 /**
  * Utility to assert Supabase client integrity and log details if broken.
  */
 export function assertSupabaseClient(client: any) {
   // Should be object, have .from, instance of SupabaseClient
-  const isClient = !!client && typeof client.from === "function" && typeof client.auth === "object";
+  const isClient =
+    !!client &&
+    typeof client.from === "function" &&
+    typeof client.auth === "object";
   if (!isClient) {
     // Log detailed info and stack
     // eslint-disable-next-line no-console
@@ -36,14 +35,17 @@ export function assertSupabaseClient(client: any) {
       "stack:", new Error().stack,
       "keys:", Object.keys(client || {})
     );
-    if (window) (window as any).__lastSupabaseClientError = JSON.stringify({
-      typeof: typeof client,
-      keys: Object.keys(client || {}),
-      stack: new Error().stack,
-      snapshot: client
-    });
+    // Optional: store in window only if available (avoid error in SSR)
+    if (typeof window !== "undefined") {
+      (window as any).__lastSupabaseClientError = JSON.stringify({
+        typeof: typeof client,
+        keys: Object.keys(client || {}),
+        stack: new Error().stack,
+        snapshot: client,
+        time: Date.now()
+      });
+    }
   }
   return isClient;
 }
-
 export const supabase = _supabase;
