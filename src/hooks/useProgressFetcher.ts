@@ -10,14 +10,23 @@ export function useProgressFetcher() {
 
   const fetchWatchedVideos = useCallback(async (user: User): Promise<number[]> => {
     setIsLoading(true);
-    
+
     try {
+      // Add DEBUG log for the supabase client before use
+      console.log("[DEBUG][useProgressFetcher] supabase:", supabase, typeof supabase, (supabase as any).from);
+      validateSupabaseClient();
+
       const progressData = await withRetry(async () => {
         // Validate client before each operation
         validateSupabaseClient();
-        
+
         console.log("[useProgressFetcher] Fetching watched videos for user:", user.id);
-        
+
+        // Extra debug log RIGHT BEFORE USING
+        if (!supabase || typeof supabase.from !== 'function') {
+          console.error("[CRITICAL] supabase client is not valid before .from. Value:", supabase);
+          throw new Error("Supabase client is invalid (no .from)");
+        }
         const { data: watched, error } = await supabase
           .from("user_progress")
           .select("video_id, watched")
@@ -34,11 +43,11 @@ export function useProgressFetcher() {
 
       console.log("[useProgressFetcher] Progress data fetched:", progressData);
       setSupabaseError(null);
-      
+
       // Ensure we return an array of numbers, with fallback to empty array
       const videoIds = progressData.map((w) => w.video_id).filter(id => typeof id === 'number');
       console.log("[useProgressFetcher] Returning video IDs:", videoIds);
-      
+
       return videoIds;
     } catch (err) {
       console.error("[useProgressFetcher] Final error after retries:", err);
