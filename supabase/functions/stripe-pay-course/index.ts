@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -49,7 +48,7 @@ serve(async (req) => {
         price_data: {
           product_data: { name: course.title },
           unit_amount: Math.round(Number(course.price) * 100),
-          currency: "usd",
+          currency: "hkd",
         },
         quantity: 1,
       }],
@@ -70,7 +69,7 @@ serve(async (req) => {
       provider_order_id: session.id,
       status: "pending",
       amount: course.price,
-      currency: "usd"
+      currency: "hkd"
     });
 
     return new Response(JSON.stringify({url: session.url}), {headers: {...corsHeaders, "Content-Type": "application/json"}, status: 200});
