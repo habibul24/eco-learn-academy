@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client"; // FIX: Static import
 
 const navLinks = [
   { name: "Home", path: "/" },
@@ -20,9 +21,10 @@ export default function Navbar() {
   React.useEffect(() => {
     async function fetchRoles() {
       if (user?.id) {
-        const { data } = await import("@/integrations/supabase/client").then(({ supabase }) =>
-          supabase.from("user_roles").select("role").eq("user_id", user.id)
-        );
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
         if (data) {
           setRoles(data.map((r: any) => r.role));
         } else {
@@ -114,7 +116,7 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <span className="text-green-800 font-medium">{user.email}</span>
               <Button variant="secondary" onClick={async () => {
-                await import("@/integrations/supabase/client").then(({ supabase }) => supabase.auth.signOut());
+                await supabase.auth.signOut();
                 navigate("/auth");
               }}>Logout</Button>
             </div>
