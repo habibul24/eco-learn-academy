@@ -24,11 +24,10 @@ export default function Index() {
           setFeaturedCourse({
             image: DEFAULT_COURSE_IMAGE,
             title: data.title,
-            instructor: "Sustainable Team",
-            enrolled: 125,
-            nextRun: "Jul 6",
+            description: (data.description ?? "").slice(0, 100), // pass description (truncated if needed)
             price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
             onView: () => window.location.href = `/course/${data.id}`,
+            // Do NOT pass enrolled here – it's a featured card, not user-context!
           });
         }
       } catch (e) {
