@@ -6,6 +6,7 @@ import AdminSummaryCards from "@/components/AdminSummaryCards";
 import AdminSearchTable from "@/components/AdminSearchTable";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 // Only fetch courses, enrollments, completions, and now count non-admin users for stats
 async function fetchAdminStats() {
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
   const { user, loading } = useAuthUser();
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // 1. Check role - if not admin, redirect
   const { data: rolesData } = useQuery({
@@ -49,6 +51,8 @@ export default function AdminDashboard() {
     enabled: !!user?.id,
   });
 
+  const isAdmin = !!rolesData && rolesData.includes("admin");
+
   React.useEffect(() => {
     if (!loading && rolesData && !rolesData.includes("admin")) {
       navigate("/");
@@ -60,6 +64,25 @@ export default function AdminDashboard() {
     queryKey: ["admin-stats"],
     queryFn: fetchAdminStats,
   });
+
+  // If dashboard loaded as admin, but enrollments is still zero, show a hint toast
+  React.useEffect(() => {
+    if (
+      !loading &&
+      isAdmin &&
+      statsQuery.data &&
+      !statsQuery.isLoading &&
+      statsQuery.data.enrollments &&
+      statsQuery.data.enrollments.length === 0
+    ) {
+      toast({
+        title: "Heads up!",
+        description:
+          "No enrollments found. If you expected enrollments, verify RLS and test in the Supabase SQL console.",
+        variant: "warning",
+      });
+    }
+  }, [loading, isAdmin, statsQuery.data, statsQuery.isLoading, toast]);
 
   if (loading || statsQuery.isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading Admin Dashboard...</div>;
@@ -96,3 +119,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
