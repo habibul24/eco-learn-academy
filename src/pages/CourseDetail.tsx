@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import CourseVideoPlayer from "@/components/CourseVideoPlayer";
@@ -10,6 +10,9 @@ import { useCourseDetailData } from "@/hooks/useCourseDetailData";
 import { useCoursePayment } from "@/hooks/useCoursePayment";
 import CourseMetaInfo from "@/components/CourseMetaInfo";
 import CoursePaymentDialog from "@/components/CoursePaymentDialog";
+import { Progress } from "@/components/ui/progress";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -115,6 +118,45 @@ export default function CourseDetail() {
   const objectives = extractSection(course.description, "Learning Objectives");
   const firstVideoUrl = videos.length > 0 ? videos[0].video_url : null;
 
+  // Progress calculation logic
+  const [progress, setProgress] = React.useState(0);
+  const [allWatched, setAllWatched] = React.useState(false);
+
+  React.useEffect(() => {
+    async function fetchProgress() {
+      if (!user || !course) return;
+      const { data: watched } = await supabase
+        .from("user_progress")
+        .select("video_id")
+        .eq("user_id", user.id)
+        .eq("watched", true);
+      const watchedIds = (watched || []).map((w) => w.video_id);
+      const total = videos.length;
+      const completed = videos.filter(v => watchedIds.includes(v.id)).length;
+      const pct = total ? Math.round((completed / total) * 100) : 0;
+      setProgress(pct);
+      setAllWatched(completed === total && total > 0);
+      // When complete, insert certificate if not exists
+      if (completed === total && total > 0 && user) {
+        const certRes = await supabase
+          .from("certificates")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("course_id", course.id);
+        if (!certRes.data?.length) {
+          // Generate a certificate number
+          const certNumber = `CERT-${Date.now()}-${user.id.slice(-6)}`;
+          await supabase.from("certificates").insert({
+            user_id: user.id,
+            course_id: course.id,
+            certificate_number: certNumber,
+          });
+        }
+      }
+    }
+    fetchProgress();
+  }, [user, course, videos]);
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F9F8F3]">
       <Navbar />
@@ -122,10 +164,23 @@ export default function CourseDetail() {
         {/* Left: Main Content */}
         <div className="w-full lg:w-3/5">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-green-900 mb-4">{course.title}</h1>
+          {/* Show progress bar */}
+          <div className="mb-4">
+            <div className="text-sm text-green-900 font-semibold mb-1">
+              Course Progress: {progress}%
+            </div>
+            <Progress value={progress} />
+            {allWatched && (
+              <div className="mt-2 text-green-800 font-bold">
+                Congratulations! You have completed this course and earned a certificate.
+              </div>
+            )}
+          </div>
           <CourseVideoPlayer
             videoUrl={activeVideoUrl}
             courseTitle={course.title}
             fallbackImage={DEFAULT_IMAGE}
+            videoId={videos.find(v => v.video_url === activeVideoUrl)?.id}
           />
           <CourseMetaInfo priceFormatted={priceFormatted} />
           <div className="text-base text-gray-700 mb-5 whitespace-pre-line">{course.description.split("\n\n")[0]}</div>
