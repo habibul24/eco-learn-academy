@@ -9,6 +9,10 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { useAuthUser } from "@/hooks/useAuthUser";
+import {
+  Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
@@ -37,7 +41,6 @@ type Course = {
 };
 
 export default function CourseDetail() {
-  // -- All hooks must be at the top level! --
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
@@ -49,29 +52,24 @@ export default function CourseDetail() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  // -- Only non-hook logic below! --
-  // Defensive: all hooks are above
-  // Phase 1: Load course + chapters + videos on mount (or id changes)
+  // Modal and payment method state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"paypal" | "stripe">("paypal");
+
   useEffect(() => {
     async function fetchDetails() {
       setLoading(true);
       const courseId = Number(id);
-
-      // Fetch course info
       const { data: courseData } = await supabase
         .from("courses")
         .select("*")
         .eq("id", courseId)
         .maybeSingle();
-
-      // Fetch chapters
       const { data: chaptersData } = await supabase
         .from("chapters")
         .select("*")
         .eq("course_id", courseId)
         .order("order_index");
-
-      // Fetch videos for all chapters
       const chapterIds = chaptersData?.map(c => c.id) || [];
       let videosData: Video[] = [];
       if (chapterIds.length > 0) {
@@ -82,12 +80,9 @@ export default function CourseDetail() {
           .order("id");
         videosData = data || [];
       }
-
       setCourse(courseData ?? null);
       setChapters(chaptersData ?? []);
       setVideos(videosData);
-
-      // Default to first video
       const firstVideo = videosData.length > 0 ? videosData[0].video_url : null;
       setActiveVideoUrl(firstVideo);
       setLoading(false);
@@ -95,7 +90,6 @@ export default function CourseDetail() {
     fetchDetails();
   }, [id]);
 
-  // Enrollment check: always after BOTH user and course are loaded
   useEffect(() => {
     async function checkEnrollment() {
       if (user && course) {
@@ -113,13 +107,10 @@ export default function CourseDetail() {
     checkEnrollment();
   }, [user, course]);
 
-  // Optional: detect PayPal payment success/cancel from query string and finalize
   useEffect(() => {
-    // Ensure this effect is NOT conditionally run!
-    // If user comes back with payment=success and PayPal order id in hash/query, capture
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get("payment");
-    const paypalOrderId = params.get("token"); // PayPal sends ?token=ORDER_ID on success
+    const paypalOrderId = params.get("token");
     if (paymentStatus === "success" && paypalOrderId && user && !isEnrolled) {
       (async () => {
         setPaying(true);
@@ -131,27 +122,24 @@ export default function CourseDetail() {
             toast({ title: "Payment confirmed, enrolled!" });
             setIsEnrolled(true);
             navigate("/my-courses");
+          } else {
+            toast({ title: "PayPal payment error", description: error.message || "Unable to confirm payment."});
           }
-        } catch {}
+        } catch (err: any) {
+          toast({ title: "PayPal capture error", description: err.message });
+        }
         setPaying(false);
       })();
     }
-    // ...stripe will auto-redirect after success session to the same page
     if (paymentStatus === "success" && !isEnrolled) {
       toast({ title: "Payment successful! Course unlocked." });
       setIsEnrolled(true);
       navigate("/my-courses");
     }
-    // eslint-disable-next-line
-  }, [user, isEnrolled]);
+  }, [user, isEnrolled, id, navigate]);
 
-  // Payment flows
+  // Payment Flows (now only trigger on modal payment button click)
   async function handleStripePay() {
-    if (!user) {
-      toast({ title: "Please log in first." });
-      navigate("/auth");
-      return;
-    }
     setPaying(true);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-pay-course", {
@@ -160,7 +148,7 @@ export default function CourseDetail() {
       if (error || !data?.url) {
         toast({ title: "Stripe payment failed", description: error?.message || "Unable to initiate payment." });
       } else {
-        window.location.href = data.url; // Stripe will redirect to success/cancel
+        window.location.href = data.url;
       }
     } catch (err: any) {
       toast({ title: "Stripe payment error", description: err.message });
@@ -170,21 +158,15 @@ export default function CourseDetail() {
   }
 
   async function handlePayPalPay() {
-    if (!user) {
-      toast({ title: "Please log in first." });
-      navigate("/auth");
-      return;
-    }
     setPaying(true);
     try {
-      // Step 1: Create the PayPal order via edge function
       const { data, error } = await supabase.functions.invoke("paypal-pay-course", {
         body: { action: "create", course_id: Number(id) }
       });
       if (error || !data?.url) {
         toast({ title: "PayPal error", description: error?.message || "Unable to start payment." });
       } else {
-        window.location.href = data.url; // PayPal will redirect on approval
+        window.location.href = data.url;
       }
     } catch (err: any) {
       toast({ title: "PayPal payment error", description: err.message });
@@ -193,7 +175,23 @@ export default function CourseDetail() {
     }
   }
 
-  // Utility: extract sections from course description
+  function startPurchase() {
+    if (!user) {
+      toast({ title: "Please log in first." });
+      navigate("/auth");
+      return;
+    }
+    setShowPaymentModal(true);
+  }
+
+  function pay() {
+    if (paymentMethod === "paypal") {
+      handlePayPalPay();
+    } else {
+      handleStripePay();
+    }
+  }
+
   function extractSection(desc: string, title: string) {
     const lines = desc.split("\n");
     const idx = lines.findIndex(line => line.trim().toLowerCase().startsWith(title.toLowerCase()));
@@ -206,8 +204,6 @@ export default function CourseDetail() {
     return section.filter(Boolean);
   }
 
-  // Defensive logging: right here means all hooks have run!
-  // Early returns now are safe.
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -230,14 +226,11 @@ export default function CourseDetail() {
     );
   }
 
-  // Prepare meta and parsed description sections
   const priceFormatted = `HKD ${course.price ? course.price.toFixed(2) : "0.00"}`;
   const COURSE_LEVEL = "Beginner";
   const COURSE_MODE = "Self-paced";
   const whoFor = extractSection(course.description, "Who is this course for?");
   const objectives = extractSection(course.description, "Learning Objectives");
-
-  // Only allow first video to be played/interacted with
   const firstVideoUrl = videos.length > 0 ? videos[0].video_url : null;
 
   return (
@@ -284,30 +277,15 @@ export default function CourseDetail() {
                 <Button variant="secondary" size="lg" className="w-full" disabled>
                   You are enrolled in this course!
                 </Button>
-              ) : user ? (
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="default"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleStripePay}
-                    disabled={paying}
-                  >
-                    {paying ? "Processing..." : "Buy with Stripe"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full"
-                    onClick={handlePayPalPay}
-                    disabled={paying}
-                  >
-                    {paying ? "Processing..." : "Buy with PayPal"}
-                  </Button>
-                </div>
               ) : (
-                <Button variant="default" size="lg" className="w-full" onClick={() => navigate("/auth")}>
-                  Login to purchase this course
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="w-full"
+                  onClick={startPurchase}
+                  disabled={paying}
+                >
+                  Buy Course
                 </Button>
               )}
             </div>
@@ -326,6 +304,57 @@ export default function CourseDetail() {
           </div>
         </div>
       </div>
+      <Dialog open={showPaymentModal} onOpenChange={open => setShowPaymentModal(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Complete Your Purchase</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center text-base font-semibold">
+              <span>{course.title}</span>
+              <span>{priceFormatted}</span>
+            </div>
+            <div>
+              <span className="block mb-1 font-medium text-gray-700">Select Payment Method</span>
+              <RadioGroup
+                value={paymentMethod}
+                onValueChange={val => setPaymentMethod(val as "paypal" | "stripe")}
+                className="flex flex-col gap-2"
+              >
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="paypal" id="pay-pal" />
+                  <span>PayPal</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="stripe" id="stripe-card" />
+                  <span>Credit Card (Stripe)</span>
+                </label>
+              </RadioGroup>
+            </div>
+            {/* Payment Buttons */}
+            <div className="flex flex-col gap-3 mt-3">
+              <Button
+                disabled={paying || paymentMethod !== "paypal"}
+                className="bg-[#FFC439] hover:bg-yellow-400 text-black font-bold w-full py-2 rounded transition-colors text-lg"
+                onClick={pay}
+              >
+                <span className="w-full flex justify-center">PayPal</span>
+              </Button>
+              <Button
+                disabled={paying || paymentMethod !== "stripe"}
+                className="bg-black hover:bg-gray-900 text-white w-full rounded py-2 text-lg font-bold flex items-center justify-center gap-2"
+                onClick={pay}
+              >
+                <span>Debit or Credit Card</span>
+              </Button>
+              <div className="text-center text-xs mt-1 text-muted-foreground">
+                Powered by <span className="font-semibold text-blue-700">PayPal</span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+// ... The file is now very long and should be refactored into smaller components!
