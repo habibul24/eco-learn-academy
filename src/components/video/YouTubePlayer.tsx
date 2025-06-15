@@ -47,6 +47,44 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     };
   }, []);
 
+  // Poll video time to detect ALMOST finished
+  useEffect(() => {
+    let poller: NodeJS.Timeout | null = null;
+
+    function maybeTriggerComplete(force: boolean = false) {
+      if (
+        !playerRef.current ||
+        typeof playerRef.current.getCurrentTime !== "function" ||
+        typeof playerRef.current.getDuration !== "function" ||
+        completeMarkRef.current
+      ) {
+        return;
+      }
+      try {
+        const duration = playerRef.current.getDuration();
+        const current = playerRef.current.getCurrentTime();
+        if (duration > 0) {
+          const left = duration - current;
+          // If less than 2 seconds remain, count as completed
+          if ((left < 2 && duration > 15) || force) {
+            if (onComplete) onComplete();
+            completeMarkRef.current = true;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (playerReady) {
+      poller = setInterval(() => maybeTriggerComplete(), 1200);
+    }
+    return () => {
+      if (poller) clearInterval(poller);
+    };
+    // Only start polling when player is ready, restart on videoId change.
+  }, [playerReady, onComplete, videoId]);
+
   useEffect(() => {
     if (!videoId || !videoDbId || !user || !containerRef.current) {
       return;
