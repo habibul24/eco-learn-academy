@@ -8,7 +8,7 @@ export function useProgressFetcher() {
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchWatchedVideos = useCallback(async (user: User) => {
+  const fetchWatchedVideos = useCallback(async (user: User): Promise<number[]> => {
     setIsLoading(true);
     
     try {
@@ -32,14 +32,18 @@ export function useProgressFetcher() {
         return watched || [];
       });
 
-      console.log("[useProgressFetcher] Progress data:", progressData);
+      console.log("[useProgressFetcher] Progress data fetched:", progressData);
       setSupabaseError(null);
       
-      return progressData.map((w) => w.video_id);
+      // Ensure we return an array of numbers, with fallback to empty array
+      const videoIds = progressData.map((w) => w.video_id).filter(id => typeof id === 'number');
+      console.log("[useProgressFetcher] Returning video IDs:", videoIds);
+      
+      return videoIds;
     } catch (err) {
       console.error("[useProgressFetcher] Final error after retries:", err);
       setSupabaseError("Unable to load progress. Please refresh the page.");
-      return [];
+      return []; // Always return an empty array on error
     } finally {
       setIsLoading(false);
     }
