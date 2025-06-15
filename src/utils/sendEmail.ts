@@ -31,10 +31,7 @@ export async function sendEmail({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // If user is logged in, include auth token for extra security (optional)
-      ...(window?.supabase?.auth?.session?.access_token
-        ? { Authorization: `Bearer ${window.supabase.auth.session().access_token}` }
-        : {}),
+      // Authorization header removed; Supabase client is not attached to window
     },
     body: JSON.stringify(body),
   });
@@ -45,3 +42,4 @@ export async function sendEmail({
   }
   return res.json();
 }
+
