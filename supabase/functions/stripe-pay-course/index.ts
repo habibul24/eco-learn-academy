@@ -58,7 +58,8 @@ serve(async (req) => {
       console.log("[stripe-pay-course] STRIPE_SECRET_KEY not set");
       return new Response(JSON.stringify({ error: "Stripe secret key not set" }), { headers: corsHeaders, status: 500 });
     }
-    const stripe = new Stripe(stripeSecret, { apiVersion: "2023-10-01" });
+    // FIX: Use a valid Stripe API version string ("2023-10-16"). DO NOT use "2023-10-01".
+    const stripe = new Stripe(stripeSecret, { apiVersion: "2023-10-16" });
     console.log("[stripe-pay-course] Stripe initialized");
 
     // Look up customer
