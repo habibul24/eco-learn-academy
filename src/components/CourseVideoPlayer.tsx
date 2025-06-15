@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, validateSupabaseClient } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -59,25 +59,14 @@ export default function CourseVideoPlayer({
     document.body.appendChild(scriptTag);
 
     return () => {
-      document.body.removeChild(scriptTag);
+      if (document.body.contains(scriptTag)) {
+        document.body.removeChild(scriptTag);
+      }
     };
   }, [ytVideoId]);
 
   useEffect(() => {
-    if (!ytVideoId || !videoId) {
-      return;
-    }
-    if (!user) {
-      return;
-    }
-
-    if (!containerRef.current) {
-      console.error("[VideoPlayer] containerRef.current is null! Cannot initialize player.");
-      toast({
-        variant: "destructive",
-        title: "Error loading video player",
-        description: "The video container could not be found. Try reloading.",
-      });
+    if (!ytVideoId || !videoId || !user || !containerRef.current) {
       return;
     }
 
@@ -109,6 +98,9 @@ export default function CourseVideoPlayer({
                 completeMarkRef.current = true;
 
                 try {
+                  // Validate client before database operation
+                  validateSupabaseClient();
+                  
                   const { error, data } = await supabase
                     .from("user_progress")
                     .upsert({
@@ -124,18 +116,14 @@ export default function CourseVideoPlayer({
                     toast({
                       variant: "destructive",
                       title: "Error marking video as completed",
-                      description:
-                        error.message +
-                        (error.code ? ` (code: ${error.code})` : ""),
+                      description: error.message + (error.code ? ` (code: ${error.code})` : ""),
                     });
                   } else if (!data || data.length === 0) {
                     toast({
                       variant: "destructive",
                       title: "Progress not saved!",
-                      description:
-                        "Your progress was not recorded. This may happen if you are not enrolled, not signed in, or due to access issues.",
+                      description: "Your progress was not recorded. This may happen if you are not enrolled, not signed in, or due to access issues.",
                     });
-                    console.error("[VideoPlayer] Upsert returned no data – likely blocked by RLS policy.", { user_id: user.id, video_id: videoId });
                   } else {
                     toast({
                       title: "Video marked as watched!",
@@ -146,10 +134,10 @@ export default function CourseVideoPlayer({
                 } catch (e) {
                   toast({
                     variant: "destructive",
-                    title: "Unexpected error recording progress",
-                    description: (e as Error).message,
+                    title: "Database error",
+                    description: "Could not save progress - please refresh the page and try again.",
                   });
-                  console.error("[VideoPlayer] Exception during upsert progress:", e);
+                  console.error("[VideoPlayer] Exception during progress update:", e);
                 }
               }
             },
@@ -179,8 +167,7 @@ export default function CourseVideoPlayer({
         playerRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ytVideoId, user, videoId]);
+  }, [ytVideoId, user, videoId, toast, onComplete]);
 
   // For non-YouTube videos, embed as plain iframe
   if (videoUrl && !ytVideoId) {

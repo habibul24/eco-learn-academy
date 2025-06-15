@@ -6,19 +6,34 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://wufjtlnxiwipdlqsntqk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1Zmp0bG54aXdpcGRscXNudHFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5NTExNjAsImV4cCI6MjA2NTUyNzE2MH0.kmfmAWpH_8IxIro1J1hd_mwbvwKCEYzaJhrOWY4Ohxw";
 
-// Create Supabase client - throw error if creation fails
-let supabase: SupabaseClient<Database>;
-
-try {
-  supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-  
-  // Validate the client was created properly
-  if (!supabase || typeof supabase.from !== "function") {
-    throw new Error("Supabase client creation failed - invalid client object");
-  }
-} catch (err) {
-  console.error("[FATAL] Supabase client creation failed:", err);
-  throw new Error("Application cannot start without valid Supabase client");
+// Validate environment
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error("Missing Supabase environment variables");
 }
 
-export { supabase };
+// Create client with error handling
+function createSupabaseClient(): SupabaseClient<Database> {
+  try {
+    const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    
+    // Validate client has required methods
+    if (!client || typeof client.from !== "function" || typeof client.auth !== "object") {
+      throw new Error("Invalid Supabase client - missing required methods");
+    }
+    
+    return client;
+  } catch (error) {
+    console.error("[FATAL] Failed to create Supabase client:", error);
+    throw new Error("Application cannot start - Supabase client creation failed");
+  }
+}
+
+// Create and export the client
+export const supabase = createSupabaseClient();
+
+// Runtime validation helper
+export function validateSupabaseClient(): void {
+  if (!supabase || typeof supabase.from !== "function") {
+    throw new Error("Supabase client is invalid - application state corrupted");
+  }
+}

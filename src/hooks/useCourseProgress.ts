@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, validateSupabaseClient } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
 export function useCourseProgress({
@@ -21,6 +21,9 @@ export function useCourseProgress({
 
     async function fetchProgress() {
       try {
+        // Validate client before any database operations
+        validateSupabaseClient();
+        
         const { data: watched, error } = await supabase
           .from("user_progress")
           .select("video_id, watched")
@@ -42,10 +45,10 @@ export function useCourseProgress({
         setAllWatched(completed === total && total > 0);
         setSupabaseError(null);
       } catch (err) {
-        console.error("[useCourseProgress] Unexpected fetch error:", err);
+        console.error("[useCourseProgress] Error:", err);
         setProgress(0);
         setAllWatched(false);
-        setSupabaseError("Unexpected error fetching course progress.");
+        setSupabaseError("Database connection error - please refresh the page.");
       }
     }
     
