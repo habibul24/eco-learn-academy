@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { getYoutubeVideoId } from "@/utils/youtubeUtils";
@@ -8,17 +7,52 @@ import { AuthWarning } from "./video/AuthWarning";
 import { useToast } from "@/components/ui/use-toast";
 import MarkCompleteButton from "./video/MarkCompleteButton";
 
-// NEW: Helper to create a certificate if not already present
+// Helper to create a certificate number
 function generateCertificateNumber() {
-  // Simple random string—swap with UUID if you want (not required for this fix)
   return 'CERT-' + Math.random().toString(36).substr(2, 9).toUpperCase();
 }
 
-async function issueCertificateOnce({ userId, courseId, toast }: { userId: string, courseId: number, toast: any }) {
+// Only issues certificate if all videos are completed
+async function checkAndIssueCertificate({
+  userId,
+  courseId,
+  toast,
+  userFullName,
+}: {
+  userId: string;
+  courseId: number;
+  toast: any;
+  userFullName: string;
+}) {
   if (!userId || !courseId) return;
   try {
     const { supabase, validateSupabaseClient } = await import("@/integrations/supabase/client");
     validateSupabaseClient();
+
+    // Get list of videos for course
+    const { data: videoData, error: videosError } = await supabase
+      .from("videos")
+      .select("id")
+      .in("chapter_id",
+        (await supabase.from("chapters").select("id").eq("course_id", courseId)).data?.map(c => c.id) || []
+      );
+
+    if (videosError) throw videosError;
+    const allVideoIds = videoData ? videoData.map((v: { id: number }) => v.id) : [];
+
+    // How many videos has this user completed?
+    const { data: progressData, error: progressError } = await supabase
+      .from("user_progress")
+      .select("video_id")
+      .eq("user_id", userId)
+      .eq("watched", true);
+
+    if (progressError) throw progressError;
+    const watchedIds = progressData ? progressData.map((r) => r.video_id) : [];
+
+    // Only issue if all video IDs present in watched IDs (all course videos complete)
+    const allWatched = allVideoIds.length > 0 && allVideoIds.every((vid: number) => watchedIds.includes(vid));
+    if (!allWatched) return; // Not complete, do not issue
 
     // Check if certificate already exists
     const { data: exists } = await supabase
@@ -33,7 +67,7 @@ async function issueCertificateOnce({ userId, courseId, toast }: { userId: strin
       return;
     }
 
-    // Insert certificate - supply required fields
+    // Insert certificate with user full name
     const { error } = await supabase
       .from("certificates")
       .insert({
@@ -41,6 +75,7 @@ async function issueCertificateOnce({ userId, courseId, toast }: { userId: strin
         course_id: courseId,
         certificate_number: generateCertificateNumber(),
         issue_date: new Date().toISOString(),
+        user_full_name: userFullName || "",
       })
       .select();
 
@@ -53,7 +88,7 @@ async function issueCertificateOnce({ userId, courseId, toast }: { userId: strin
     } else {
       toast({
         title: "Certificate earned!",
-        description: "Your certificate is now available on the My Certificates page.",
+        description: "Congratulations! Your certificate is now available on the My Certificates page.",
       });
     }
   } catch (e: any) {
@@ -106,12 +141,17 @@ export default function CourseVideoPlayer({
     return <AuthWarning />;
   }
 
-  // NEW: receive courseId from parent
-  // We'll get courseId from props in a follow-up as needed, for now grab from window.location.pathname
+  // Get courseId from URL
   const courseId = (() => {
     const match = window.location.pathname.match(/\/enrolled-course\/(\d+)/);
     return match ? Number(match[1]) : undefined;
   })();
+
+  // Always prefer full name for user on certificate
+  const userFullName =
+    user?.user_metadata?.full_name?.trim?.() ||
+    user?.user_metadata?.name?.trim?.() ||
+    "";
 
   const handleMarkComplete = async () => {
     if (!user || !videoId) return;
@@ -143,9 +183,15 @@ export default function CourseVideoPlayer({
         description: "Your progress has been saved.",
       });
       setCompleted(true);
-      // --- New: issue certificate if course complete ---
+
+      // --- Only issue certificate if 100% complete ---
       if (courseId && user.id) {
-        await issueCertificateOnce({ userId: user.id, courseId, toast });
+        await checkAndIssueCertificate({
+          userId: user.id,
+          courseId,
+          toast,
+          userFullName,
+        });
       }
       if (onComplete) onComplete();
     } catch (e: any) {
