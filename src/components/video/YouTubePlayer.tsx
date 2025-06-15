@@ -34,6 +34,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   useEffect(() => {
     completeMarkRef.current = false;
     setDebugShowComplete(false);
+    console.log("[YouTubePlayer] RESET on videoId, videoDbId, user?.id", { videoId, videoDbId, user });
   }, [videoId, videoDbId, user?.id]);
 
   // Load YouTube IFrame API script
@@ -64,7 +65,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         completeMarkRef.current
       ) {
         // Add debug for current player state
-        console.log("[YouTubePlayer] Skipping poll: playerRef", playerRef.current, "playerReady", playerReady);
+        console.log("[YouTubePlayer] Skipping poll: playerRef", playerRef.current, "playerReady", playerReady, "completeMarkRef", completeMarkRef.current);
         return;
       }
       try {
@@ -77,7 +78,10 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 
         // If stuck just shy of the end, make sure user can still mark complete!
         if (duration > 0 && current > 0 && (duration - current < 12 && duration - current > 2.5)) {
-          setDebugShowComplete(true);
+          if (!debugShowComplete) {
+            setDebugShowComplete(true);
+            console.log("[YouTubePlayer] Setting debugShowComplete TRUE", {current, duration, left});
+          }
         }
 
         if (duration > 0) {
@@ -97,12 +101,15 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     }
 
     if (playerReady) {
+      console.log("[YouTubePlayer] Polling started — playerReady");
       poller = setInterval(() => maybeTriggerComplete(), 500); // interval now 500ms
+    } else {
+      console.log("[YouTubePlayer] Polling NOT started, playerReady?", playerReady);
     }
     return () => {
       if (poller) clearInterval(poller);
     };
-  }, [playerReady, onComplete, videoId]);
+  }, [playerReady, onComplete, videoId, debugShowComplete]);
 
   useEffect(() => {
     if (!videoId || !videoDbId || !user || !containerRef.current) {
@@ -137,7 +144,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
               // 0: ended
               if (event.data === 0 && !completeMarkRef.current) {
                 completeMarkRef.current = true;
-                if (onComplete) onComplete(); // Mark video as ended for UI
+                if (onComplete) onComplete();
                 setDebugShowComplete(false);
                 console.log("[YouTubePlayer] YT Event: ended");
               }
@@ -170,6 +177,9 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     };
   }, [videoId, user, videoDbId, toast, onComplete]);
 
+  // --- DEBUG: always print state on render and render fallback button if playerReady
+  console.log("[YouTubePlayer RENDER] playerReady", playerReady, "debugShowComplete", debugShowComplete, "videoId", videoId, "videoDbId", videoDbId, "user?.id", user?.id);
+
   return (
     <div className="w-full h-full min-h-[260px] relative">
       <div
@@ -178,6 +188,23 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         id="youtube-player"
       />
       {!playerReady && <PlayerLoading />}
+      {/* Fallback debug button, forced always on test */}
+      <div className="absolute left-0 right-0 bottom-36 flex justify-center z-40">
+        <MarkCompleteButton
+          onClick={() => {
+            if (!completeMarkRef.current) {
+              if (onComplete) onComplete();
+              completeMarkRef.current = true;
+              setDebugShowComplete(false);
+              console.log("[YouTubePlayer] TEST/FORCED Mark Complete pressed");
+            }
+          }}
+          loading={false}
+        />
+        <span className="ml-3 bg-yellow-300/80 px-2 py-1 rounded text-sm font-mono text-yellow-900 shadow">
+          DEBUG: BUTTON ALWAYS ON
+        </span>
+      </div>
       {debugShowComplete && (
         <div className="absolute left-0 right-0 bottom-16 flex justify-center z-30">
           <MarkCompleteButton
