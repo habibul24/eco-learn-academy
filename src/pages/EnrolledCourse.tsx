@@ -18,7 +18,7 @@ if (!supabase || typeof supabase.from !== "function") {
 const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
 // Debug: Log and check validity of supabase client
-console.log("[debug:enrolled-course] supabase import is", supabase);
+console.log("[DEBUG: enrolled-course] Imported supabase at runtime is:", supabase, "typeof:", typeof supabase);
 if (!supabase || typeof supabase.from !== "function") {
   // eslint-disable-next-line no-console
   console.error("[debug:enrolled-course] Imported supabase client is invalid!", supabase);
