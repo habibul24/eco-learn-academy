@@ -7,33 +7,22 @@ import AdminSearchTable from "@/components/AdminSearchTable";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useNavigate } from "react-router-dom";
 
-// No "list_all_users" function in DB, so just return an empty array for users column/stats for now
+// Only fetch courses, enrollments, and completions for stats
 async function fetchAdminStats() {
-  // Get all stats: courses, enrollments, completions, and users if available
-  // TODO: Replace this when user list is in DB
   const [
     { data: courses },
     { data: enrollments },
-    { data: completions }
+    { data: completions },
   ] = await Promise.all([
     supabase.from("courses").select("*"),
     supabase.from("course_enrollments").select("*"),
     supabase.from("user_progress").select("*"),
   ]);
-  // Try to fetch users table, fallback empty:
-  let users = [];
-  try {
-    const { data: usersData } = await supabase.rpc("list_all_users"); // Only works if function exists
-    if (usersData) users = usersData;
-  } catch {
-    // fallback: no users table
-    users = [];
-  }
   return {
-    users,
     courses: courses ?? [],
     enrollments: enrollments ?? [],
     completions: completions ?? [],
+    // users: N/A
   };
 }
 
@@ -47,11 +36,11 @@ export default function AdminDashboard() {
     queryKey: ["my-roles", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id);
-      return data?.map(d => d.role) || [];
+      return data?.map((d) => d.role) || [];
     },
     enabled: !!user?.id,
   });
@@ -72,7 +61,7 @@ export default function AdminDashboard() {
     return <div className="min-h-screen flex items-center justify-center">Loading Admin Dashboard...</div>;
   }
 
-  const { users = [], courses = [], enrollments = [], completions = [] } = statsQuery.data || {};
+  const { courses = [], enrollments = [], completions = [] } = statsQuery.data || {};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white pt-20 pb-10 px-2 md:px-8">
@@ -80,24 +69,24 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold mb-6 text-green-900">Admin Dashboard</h1>
         {statsQuery.data && (
           <AdminSummaryCards
-            totalUsers={users.length}
+            totalUsers={null} 
             totalCourses={courses.length}
             totalEnrollments={enrollments.length}
             completions={completions}
           />
         )}
         <div className="mt-10 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <h2 className="text-xl font-semibold text-green-800">All Users, Courses & Enrollments</h2>
+          <h2 className="text-xl font-semibold text-green-800">All Courses & Enrollments</h2>
           <input
             className="border border-yellow-300 rounded px-4 py-2 shadow w-full sm:w-96 text-green-900 focus:ring-2 focus:ring-yellow-400"
-            placeholder="Search users, courses, enrollments..."
+            placeholder="Search courses, enrollments..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <AdminSearchTable
           search={search}
-          users={users}
+          users={[]} // Empty, no user list available
           courses={courses}
           enrollments={enrollments}
         />

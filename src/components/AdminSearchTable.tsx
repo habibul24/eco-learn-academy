@@ -29,6 +29,7 @@ function getUserName(u: any) {
 }
 
 export default function AdminSearchTable({ search, users, courses, enrollments }: Props) {
+  // Only allow userRows if there is user data
   const userRows = (users ?? []).filter(u => matchesSearch(u, search));
   const courseRows = (courses ?? []).filter(c => matchesSearch(c, search));
   const enrollmentRows = (enrollments ?? []).filter(e => matchesSearch(e, search));
@@ -36,32 +37,37 @@ export default function AdminSearchTable({ search, users, courses, enrollments }
   return (
     <div className="bg-white rounded-xl p-4 shadow border animate-fade-in">
       <div className="overflow-x-auto">
-        <h3 className="text-lg font-bold mb-3 text-green-900">Users</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {userRows.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={3} className="italic text-gray-500">
-                  No users found
-                </TableCell>
-              </TableRow>
-            )}
-            {userRows.map(u => (
-              <TableRow key={u.id ?? u.user_id ?? Math.random()}>
-                <TableCell>{u.id ?? u.user_id ?? "-"}</TableCell>
-                <TableCell>{getUserName(u)}</TableCell>
-                <TableCell>{u.email || "-"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {/* Hide Users table section if users list is empty */}
+        {userRows.length > 0 && (
+          <>
+            <h3 className="text-lg font-bold mb-3 text-green-900">Users</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {userRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="italic text-gray-500">
+                      No users found
+                    </TableCell>
+                  </TableRow>
+                )}
+                {userRows.map(u => (
+                  <TableRow key={u.id ?? u.user_id ?? Math.random()}>
+                    <TableCell>{u.id ?? u.user_id ?? "-"}</TableCell>
+                    <TableCell>{getUserName(u)}</TableCell>
+                    <TableCell>{u.email || "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </>
+        )}
         <h3 className="text-lg font-bold mt-8 mb-3 text-green-900">Courses</h3>
         <Table>
           <TableHeader>

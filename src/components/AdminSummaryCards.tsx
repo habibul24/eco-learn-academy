@@ -19,11 +19,12 @@ export default function AdminSummaryCards({
     Array.isArray(completions)
       ? completions.filter((c) => c.watched === true).length
       : 0;
-  // Cards config: icon, value, label, highlight
+  // Only show available summary stats; users not available
   const cards = [
+    // Optionally: Show users count card but display "N/A"
     {
       icon: <Users className="w-7 h-7 mb-3 text-green-900" />,
-      value: totalUsers,
+      value: totalUsers === null ? "N/A" : totalUsers,
       label: "Total Users",
       color: "from-yellow-400 to-yellow-300 border-yellow-300",
     },
@@ -46,7 +47,6 @@ export default function AdminSummaryCards({
       color: "from-green-200 to-green-100 border-green-200",
     },
   ];
-
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full">
       {cards.map(({ icon, value, label, color }, idx) => (
