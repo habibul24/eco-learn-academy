@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -15,7 +14,8 @@ async function getAccessToken() {
   // Log PayPal secret presence (redact for security)
   console.log("getAccessToken: PAYPAL_CLIENT_ID defined:", !!clientId, "PAYPAL_SECRET defined:", !!secret);
 
-  const resp = await fetch("https://api-m.sandbox.paypal.com/v1/oauth2/token", {
+  // CHANGED TO LIVE ENDPOINT
+  const resp = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
     method: "POST",
     headers: {
       "Authorization": `Basic ${creds}`,
@@ -89,7 +89,8 @@ serve(async (req) => {
       console.log("Attempting to create PayPal order for course", course_id);
       // Step 1: Create PayPal order
       const accessToken = await getAccessToken();
-      const res = await fetch("https://api-m.sandbox.paypal.com/v2/checkout/orders", {
+      // CHANGED TO LIVE ENDPOINT
+      const res = await fetch("https://api-m.paypal.com/v2/checkout/orders", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -136,7 +137,8 @@ serve(async (req) => {
       console.log("Attempting to capture PayPal order", order_id);
       // Step 2: Capture funds after approval (client calls after PayPal redirects back)
       const accessToken = await getAccessToken();
-      const res = await fetch(`https://api-m.sandbox.paypal.com/v2/checkout/orders/${order_id}/capture`, {
+      // CHANGED TO LIVE ENDPOINT
+      const res = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${order_id}/capture`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
