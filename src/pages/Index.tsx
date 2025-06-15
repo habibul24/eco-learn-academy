@@ -1,83 +1,112 @@
 
-// Full landing page for the Sustainability LMS
-
 import Navbar from "@/components/Navbar";
-import CourseCatalog from "@/components/CourseCatalog";
-import { Users } from "lucide-react";
+import CourseCard from "@/components/CourseCard";
+import { Users, CheckCircle, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import React from "react";
+
+const featuredCourse = {
+  image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=620&q=80",
+  title: "How ESG works in business",
+  instructor: "Sustainable Team",
+  enrolled: 125,
+  nextRun: "Jul 6",
+  price: "USD 5.00",
+  onView: () => window.location.href = "/courses",
+};
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white w-full">
+    <div className="w-full min-h-screen flex flex-col bg-[#FCFDF7]">
+      {/* Slim header */}
       <Navbar />
+
       {/* Hero section */}
-      <section className="pt-32 px-8 max-w-[1400px] mx-auto flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-24">
-        <div className="flex-1 mb-6 lg:mb-0">
-          <span className="bg-green-100 rounded-full px-4 py-1 text-green-800 font-semibold text-sm mb-4 inline-block animate-fade-in">
-            Learn • Grow • Impact
-          </span>
-          <h1 className="text-5xl font-extrabold text-green-900 mb-6 leading-tight">
-            Master Sustainability With <span className="text-green-700">Expert-Led</span> Courses
+      <section className="relative flex flex-col items-center justify-center text-center px-4 pt-28 pb-14 bg-no-repeat bg-cover" style={{
+        backgroundImage: "url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1050&q=40')",
+        backgroundPosition: "center top",
+        backgroundSize: "cover",
+        minHeight: "375px"
+      }}>
+        <div className="absolute inset-0 bg-white bg-opacity-70 backdrop-blur-sm"></div>
+        <div className="relative z-10 flex flex-col items-center justify-center">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-green-900 mt-2 mb-4">
+            Navigate your sustainability journey with clarity
           </h1>
-          <p className="text-xl text-muted-foreground mb-6 max-w-xl">
-            Sustainability isn’t just a buzzword — it’s a way of life and business.
-            Join <span className="font-semibold text-green-700">SustainLearn</span> to gain actionable skills from passionate instructors, and create positive environmental change.
+          <p className="text-md sm:text-lg text-gray-700 max-w-xl mx-auto mb-0">
+            Explore courses that equip you with the knowledge to drive positive<br />ESG practices within your business.
           </p>
+        </div>
+      </section>
+
+      {/* Featured Courses */}
+      <section className="w-full py-14 bg-green-900 flex flex-col items-center">
+        <h2 className="text-2xl font-semibold text-white mb-8">Featured Courses</h2>
+        <div className="w-full flex justify-center">
+          <div className="max-w-xs">
+            <CourseCard {...featuredCourse} />
+          </div>
+        </div>
+      </section>
+
+      {/* Community section */}
+      <section className="w-full py-16 px-4 bg-white flex flex-col md:flex-row items-center justify-center gap-10 md:gap-14">
+        <div className="flex-1 max-w-xl text-left">
+          <h3 className="text-2xl font-bold text-green-900 mb-4">Join Our Community</h3>
+          <p className="mb-6 text-gray-700">
+            Connect with like-minded individuals passionate about sustainability and environmental stewardship.
+          </p>
+          <ul className="flex flex-col gap-3 mb-8 text-green-900 text-base">
+            <li className="flex items-center gap-2"><CheckCircle className="text-green-600" size={20}/> Network with sustainability professionals</li>
+            <li className="flex items-center gap-2"><CheckCircle className="text-green-600" size={20}/> Participate in meaningful discussions</li>
+            <li className="flex items-center gap-2"><CheckCircle className="text-green-600" size={20}/> Access exclusive events and webinars</li>
+            <li className="flex items-center gap-2"><CheckCircle className="text-green-600" size={20}/> Share your sustainability journey</li>
+          </ul>
           <a
-            href="#courses"
-            className="inline-block bg-green-600 text-white rounded-lg px-8 py-3 font-semibold text-lg shadow-lg hover:bg-green-700 hover:scale-105 transition story-link"
+            href="/about"
+            className="inline-block bg-yellow-400 text-green-900 font-medium rounded-lg px-7 py-2 shadow hover:bg-yellow-300 transition"
           >
-            Shop Sustainability Courses
+            Join Now
           </a>
         </div>
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex justify-center items-center">
           <img
-            src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=620&q=80"
-            alt="Sustainability landscape"
-            className="rounded-2xl shadow-2xl border-2 border-green-50 w-[400px] h-[320px] object-cover animate-scale-in"
+            src="/lovable-uploads/aa796f54-d1cf-45e2-9066-df7142436b98.png"
+            alt="Community"
+            className="rounded-xl shadow-lg max-w-md w-full h-auto object-cover"
           />
         </div>
       </section>
 
-      {/* Quick Stats & Mission */}
-      <section className="flex flex-col md:flex-row gap-8 md:gap-16 items-center justify-between max-w-[1200px] mx-auto py-12 mt-8 mb-2">
-        <div className="bg-white dark:bg-background rounded-xl shadow-lg px-8 py-6 flex flex-col items-center gap-2 w-full md:w-auto min-w-[250px]">
-          <Users className="text-green-700" size={32} />
-          <span className="font-bold text-2xl">5,000+</span>
-          <span className="text-muted-foreground text-sm">Students enrolled</span>
-        </div>
-        <div className="bg-white dark:bg-background rounded-xl shadow-lg px-8 py-6 flex flex-col items-center gap-2 w-full md:w-auto min-w-[250px]">
-          <span className="font-bold text-2xl text-green-700">Top Experts</span>
-          <span className="text-muted-foreground text-sm">Taught by leaders in sustainability</span>
-        </div>
-        <div className="bg-white dark:bg-background rounded-xl shadow-lg px-8 py-6 flex flex-col items-center gap-2 w-full md:w-auto min-w-[250px]">
-          <span className="font-bold text-2xl">7 Countries</span>
-          <span className="text-muted-foreground text-sm">Global community impact</span>
-        </div>
-      </section>
-
-      {/* Courses */}
-      <main id="courses" className="max-w-[1400px] mx-auto pb-20">
-        <CourseCatalog />
-      </main>
-
-      {/* About & Footer */}
-      <footer className="bg-green-900 text-green-50 py-12 mt-12">
-        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center px-8 gap-6">
-          <div>
-            <span className="text-2xl font-bold">SustainLearn</span>
-            <p className="text-green-100 mt-2 max-w-xs">
-              Our mission: make sustainability knowledge accessible, practical, and inspiring—worldwide.
+      {/* Footer */}
+      <footer className="bg-green-900 text-white py-10">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-start gap-10">
+          <div className="mb-6 md:mb-0">
+            <span className="text-lg font-bold block">Green Data</span>
+            <p className="text-sm text-green-100 mt-2 max-w-xs">
+              Empowering individuals and organizations through sustainable education.
             </p>
           </div>
-          <div className="flex gap-8 text-lg font-medium">
-            <a href="/" className="hover:underline hover:text-green-200 story-link">Home</a>
-            <a href="/courses" className="hover:underline hover:text-green-200 story-link">Courses</a>
-            <a href="/about" className="hover:underline hover:text-green-200 story-link">About</a>
+          <div className="mb-6 md:mb-0">
+            <span className="font-medium block mb-2">Quick Links</span>
+            <ul className="space-y-1 text-green-100 text-sm">
+              <li><a href="/about" className="hover:underline">About Us</a></li>
+              <li><a href="/courses" className="hover:underline">Courses</a></li>
+              <li><a href="/contact" className="hover:underline">Contact</a></li>
+              <li><a href="/privacy" className="hover:underline">Privacy Policy</a></li>
+            </ul>
+          </div>
+          <div>
+            <span className="font-medium block mb-2">Connect With Us</span>
+            <div className="flex gap-4 mt-1">
+              <a href="#" className="hover:opacity-80" aria-label="Facebook"><Facebook className="text-green-100" /></a>
+              <a href="#" className="hover:opacity-80" aria-label="Twitter"><Twitter className="text-green-100" /></a>
+              <a href="#" className="hover:opacity-80" aria-label="LinkedIn"><Linkedin className="text-green-100" /></a>
+              <a href="#" className="hover:opacity-80" aria-label="Instagram"><Instagram className="text-green-100" /></a>
+            </div>
           </div>
         </div>
-        <div className="text-center text-green-200 pt-8 text-xs">
-          &copy; {new Date().getFullYear()} SustainLearn. All rights reserved.
+        <div className="text-center text-green-200 pt-8 text-xs opacity-80">
+          &copy; {new Date().getFullYear()} Green Data. All rights reserved.
         </div>
       </footer>
     </div>
