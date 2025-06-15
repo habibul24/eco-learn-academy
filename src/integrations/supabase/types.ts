@@ -229,6 +229,53 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          amount: number | null
+          course_id: number
+          created_at: string
+          currency: string | null
+          id: string
+          provider: string
+          provider_order_id: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          course_id: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          provider: string
+          provider_order_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          course_id?: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          provider?: string
+          provider_order_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pre_course_responses: {
         Row: {
           course_id: number
