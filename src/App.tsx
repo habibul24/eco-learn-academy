@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,8 +8,19 @@ import NotFound from "./pages/NotFound";
 import Courses from "./pages/Courses";
 import About from "./pages/About";
 import Login from "./pages/Login";
+import Auth from "@/pages/Auth";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import React from "react";
 
 const queryClient = new QueryClient();
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuthUser();
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!user) window.location.href = "/auth";
+  return <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -23,7 +33,19 @@ const App = () => (
           <Route path="/courses" element={<Courses />} />
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/auth" element={<Auth />} />
+          {/* All custom/protected routes above the catch-all */}
+          {/* Example of a protected route; add real private pages below: */}
+          {/*
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

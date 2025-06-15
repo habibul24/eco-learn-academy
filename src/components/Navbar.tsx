@@ -1,7 +1,9 @@
 
-import { Book, Users } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Book } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { name: "Home", path: "/" },
@@ -11,6 +13,14 @@ const navLinks = [
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, loading } = useAuthUser();
+
+  async function handleLogout() {
+    await import("@/integrations/supabase/client").then(({ supabase }) => supabase.auth.signOut());
+    navigate("/auth");
+  }
+
   return (
     <header className="w-full bg-white dark:bg-background shadow-md fixed top-0 left-0 z-40">
       <nav className="max-w-[1400px] mx-auto flex items-center justify-between h-16 px-8">
@@ -33,12 +43,19 @@ export default function Navbar() {
           ))}
         </div>
         <div>
-          <Link
-            to="/login"
-            className="rounded px-6 py-2 font-semibold text-white bg-green-600 hover:bg-green-700 shadow transition-colors duration-150"
-          >
-            Login/Signup
-          </Link>
+          {loading ? null : user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-green-800 font-medium">{user.email}</span>
+              <Button variant="secondary" onClick={handleLogout}>Logout</Button>
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              className="rounded px-6 py-2 font-semibold text-white bg-green-600 hover:bg-green-700 shadow transition-colors duration-150"
+            >
+              Login/Signup
+            </Link>
+          )}
         </div>
       </nav>
     </header>
