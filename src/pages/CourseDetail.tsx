@@ -33,6 +33,10 @@ export default function CourseDetail() {
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  // Progress calculation logic — moved to top!
+  const [progress, setProgress] = React.useState(0);
+  const [allWatched, setAllWatched] = React.useState(false);
+
   // Sync current video
   React.useEffect(() => {
     setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);
@@ -64,7 +68,7 @@ export default function CourseDetail() {
         payment.setPaying(false);
       })();
     }
-    // Handle Stripe return: /course/:id?payment=success&session_id=some-stripe-session-id
+    // Handle Stripe return
     if (paymentStatus === "success" && stripeSessionId && user && !isEnrolled) {
       (async () => {
         payment.setPaying(true);
@@ -84,12 +88,45 @@ export default function CourseDetail() {
         payment.setPaying(false);
       })();
     }
-    // Fallback, if payment=success but provider unknown, just toast and redirect
+    // Fallback, unknown provider
     if (paymentStatus === "success" && !isEnrolled && !paypalOrderId && !stripeSessionId) {
       toast({ title: "Payment successful! Course unlocked." });
       navigate("/my-courses");
     }
   }, [user, isEnrolled, course, navigate, payment]);
+
+  React.useEffect(() => {
+    async function fetchProgress() {
+      if (!user || !course) return;
+      const { data: watched } = await supabase
+        .from("user_progress")
+        .select("video_id")
+        .eq("user_id", user.id)
+        .eq("watched", true);
+      const watchedIds = (watched || []).map((w) => w.video_id);
+      const total = videos.length;
+      const completed = videos.filter(v => watchedIds.includes(v.id)).length;
+      const pct = total ? Math.round((completed / total) * 100) : 0;
+      setProgress(pct);
+      setAllWatched(completed === total && total > 0);
+      if (completed === total && total > 0 && user) {
+        const certRes = await supabase
+          .from("certificates")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("course_id", course.id);
+        if (!certRes.data?.length) {
+          const certNumber = `CERT-${Date.now()}-${user.id.slice(-6)}`;
+          await supabase.from("certificates").insert({
+            user_id: user.id,
+            course_id: course.id,
+            certificate_number: certNumber,
+          });
+        }
+      }
+    }
+    fetchProgress();
+  }, [user, course, videos]);
 
   if (loading) {
     return (
@@ -117,45 +154,6 @@ export default function CourseDetail() {
   const whoFor = extractSection(course.description, "Who is this course for?");
   const objectives = extractSection(course.description, "Learning Objectives");
   const firstVideoUrl = videos.length > 0 ? videos[0].video_url : null;
-
-  // Progress calculation logic
-  const [progress, setProgress] = React.useState(0);
-  const [allWatched, setAllWatched] = React.useState(false);
-
-  React.useEffect(() => {
-    async function fetchProgress() {
-      if (!user || !course) return;
-      const { data: watched } = await supabase
-        .from("user_progress")
-        .select("video_id")
-        .eq("user_id", user.id)
-        .eq("watched", true);
-      const watchedIds = (watched || []).map((w) => w.video_id);
-      const total = videos.length;
-      const completed = videos.filter(v => watchedIds.includes(v.id)).length;
-      const pct = total ? Math.round((completed / total) * 100) : 0;
-      setProgress(pct);
-      setAllWatched(completed === total && total > 0);
-      // When complete, insert certificate if not exists
-      if (completed === total && total > 0 && user) {
-        const certRes = await supabase
-          .from("certificates")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("course_id", course.id);
-        if (!certRes.data?.length) {
-          // Generate a certificate number
-          const certNumber = `CERT-${Date.now()}-${user.id.slice(-6)}`;
-          await supabase.from("certificates").insert({
-            user_id: user.id,
-            course_id: course.id,
-            certificate_number: certNumber,
-          });
-        }
-      }
-    }
-    fetchProgress();
-  }, [user, course, videos]);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F9F8F3]">
