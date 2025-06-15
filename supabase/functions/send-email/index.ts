@@ -6,8 +6,7 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 type EventType = "welcome" | "enrollment" | "certificate";
@@ -20,6 +19,7 @@ interface SendEmailRequest {
   certificateLink?: string;
 }
 
+// Helper to render email body and subject according to event
 function renderEmailBody(payload: SendEmailRequest): { subject: string; html: string } {
   switch (payload.event) {
     case "welcome":
