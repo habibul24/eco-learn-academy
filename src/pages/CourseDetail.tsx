@@ -232,21 +232,10 @@ export default function CourseDetail() {
               activeVideoUrl={activeVideoUrl}
               setActiveVideoUrl={setActiveVideoUrl}
               isEnrolled={isEnrolled}
-              paying={false}
-              onBuyCourse={() => {}} // not used in current UI
+              paying={payment.paying}
+              onBuyCourse={payment.startPurchase} // FIXED: Pass correct handler
             />
-            {/* Show buy button only for learner, not admin, not enrolled, not loading */}
-            {!isEnrolled && user && isLearner && (
-              <div className="mt-8 flex justify-center">
-                <Button
-                  className="w-full text-lg font-bold py-3"
-                  onClick={payment.startPurchase}
-                  data-testid="buy-course-btn"
-                >
-                  Buy This Course
-                </Button>
-              </div>
-            )}
+            {/* REMOVED: The large Buy This Course button here, handled solely by sidebar */}
           </div>
         </div>
       </div>
