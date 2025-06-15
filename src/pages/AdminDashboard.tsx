@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,7 +78,7 @@ export default function AdminDashboard() {
         title: "Heads up!",
         description:
           "No enrollments found. If you expected enrollments, verify RLS and test in the Supabase SQL console.",
-        variant: "warning",
+        variant: "default",
       });
     }
   }, [loading, isAdmin, statsQuery.data, statsQuery.isLoading, toast]);
@@ -119,4 +118,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
