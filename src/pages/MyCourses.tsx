@@ -5,6 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import CourseCard from "@/components/CourseCard"; // import Card
+
+const DEFAULT_COURSE_IMAGE =
+  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
 
 export default function MyCourses() {
   const { user, loading } = useAuthUser();
@@ -62,15 +66,15 @@ export default function MyCourses() {
           ) : (
             <div className="grid gap-4">
               {courses.map((course) => (
-                <button
+                <CourseCard
                   key={course.id}
-                  className="text-left border rounded-lg p-4 bg-green-50 hover:bg-green-100 transition-all shadow flex flex-col gap-1"
-                  onClick={() => navigate(`/course/${course.id}`)}
-                >
-                  <div className="text-xl font-semibold text-green-900">{course.title}</div>
-                  <div className="text-sm text-gray-700 line-clamp-3 mb-1">{course.description}</div>
-                  <div className="text-sm font-semibold text-green-700">{course.price ? `HKD ${course.price.toFixed(2)}` : "Free"}</div>
-                </button>
+                  image={DEFAULT_COURSE_IMAGE}
+                  title={course.title}
+                  description={course.description || ""}
+                  price={course.price ? `USD ${(course.price).toFixed(2)}` : "USD 0.00"}
+                  enrolled={true}
+                  onView={() => navigate(`/enrolled-course/${course.id}`)}
+                />
               ))}
             </div>
           )}
