@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Loader2, Youtube } from "lucide-react";
-
-const DEFAULT_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80";
+import Navbar from "@/components/Navbar";
 
 type Video = {
   id: number;
@@ -125,6 +124,8 @@ export default function CourseDetail() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F9F8F3]">
+      {/* Add Navbar */}
+      <Navbar />
       <div className="max-w-7xl w-full mx-auto px-2 md:px-8 flex-1 flex flex-col lg:flex-row gap-10 pt-24 pb-12">
         {/* Left: Main Content */}
         <div className="w-full lg:w-3/5">

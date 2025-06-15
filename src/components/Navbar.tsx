@@ -1,5 +1,4 @@
 
-import { Book } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuthUser } from "@/hooks/useAuthUser";
@@ -24,9 +23,14 @@ export default function Navbar() {
   return (
     <header className="w-full bg-white dark:bg-background shadow-md fixed top-0 left-0 z-40">
       <nav className="max-w-[1400px] mx-auto flex items-center justify-between h-16 px-8">
-        <Link to="/" className="flex items-center gap-2 font-bold text-2xl text-green-700 hover:text-green-800 transition-colors">
-          <Book className="text-green-700" size={32} />
-          SustainLearn
+        <Link to="/" className="flex items-center gap-3 group" aria-label="GreenData Home">
+          {/* Logo image replaces icon + text */}
+          <img
+            src="/lovable-uploads/86331d3a-e552-4c3b-8471-0c10bc776b9a.png"
+            alt="GreenData Logo"
+            className="h-10 w-auto"
+            style={{maxWidth: 130}}
+            />
         </Link>
         <div className="flex gap-6">
           {navLinks.map(link => (
