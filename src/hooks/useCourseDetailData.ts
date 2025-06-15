@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useParams } from "react-router-dom";
@@ -34,8 +33,11 @@ type Course = {
 };
 
 export function useCourseDetailData() {
-  const { id } = useParams<{ id: string }>();
-  const courseId = id && !isNaN(Number(id)) ? Number(id) : undefined;
+  const params = useParams();
+  // Add extra debug
+  console.log("[useCourseDetailData] useParams output:", params);
+  const idParam = params?.id;
+  const courseId = idParam && !isNaN(Number(idParam)) ? Number(idParam) : undefined;
   const { user, loading: authLoading } = useAuthUser();
   const [course, setCourse] = useState<Course | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -57,13 +59,15 @@ export function useCourseDetailData() {
 
   useEffect(() => {
     checkSupabaseClient();
+    // Log extraction of courseId
+    console.log("[useCourseDetailData] courseId extraction:", { idParam, courseId });
     // If courseId is invalid, don't make requests and reset state
     if (typeof courseId !== "number" || isNaN(courseId)) {
       setCourse(null);
       setChapters([]);
       setVideos([]);
       setLoading(false);
-      console.warn("[useCourseDetailData] Invalid or missing courseId in params:", { id, courseId });
+      console.warn("[useCourseDetailData] Invalid or missing courseId in params:", { idParam, courseId });
       return;
     }
     async function fetchDetails() {
@@ -94,7 +98,7 @@ export function useCourseDetailData() {
       setLoading(false);
     }
     fetchDetails();
-  }, [id, courseId]);
+  }, [idParam, courseId]);
 
   useEffect(() => {
     checkSupabaseClient();
@@ -122,5 +126,6 @@ export function useCourseDetailData() {
     loading: loading || authLoading,
     isEnrolled,
     user,
+    courseId // Add to give explicit access downstream
   };
 }

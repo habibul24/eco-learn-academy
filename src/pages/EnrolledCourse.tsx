@@ -1,4 +1,3 @@
-
 import React from "react";
 import Navbar from "@/components/Navbar";
 import CourseContentSidebar from "@/components/CourseContentSidebar";
@@ -25,7 +24,7 @@ function extractSection(desc: string, title: string) {
 }
 
 export default function EnrolledCourse() {
-  const { course, chapters, videos, loading, user } = useCourseDetailData();
+  const { course, chapters, videos, loading, user, courseId } = useCourseDetailData();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [activeVideoUrl, setActiveVideoUrl] = React.useState<string | null>(videos.length > 0 ? videos[0].video_url : null);
 
@@ -33,12 +32,23 @@ export default function EnrolledCourse() {
     setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);
   }, [videos]);
 
-  // Use the course progress hook
-  const { progress, allWatched, supabaseError, isLoading: progressLoading } = useCourseProgress({
-    user,
-    courseId: course?.id,
-    videos,
-  });
+  // Move progress hook below loading/courseId check, only run if loaded and IDs are valid
+  const validCourseId = typeof courseId === "number" && !isNaN(courseId);
+  const courseProgress = (course && validCourseId)
+    ? useCourseProgress({
+        user,
+        courseId: course.id,
+        videos,
+      })
+    : {
+        progress: 0,
+        allWatched: false,
+        supabaseError: null,
+        isLoading: loading
+      };
+
+  // Compute progress/loading state from above
+  const { progress, allWatched, supabaseError, isLoading: progressLoading } = courseProgress;
 
   // Handle refresh for progress errors
   const handleProgressRefresh = () => {
