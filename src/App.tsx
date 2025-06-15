@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,7 @@ import Auth from "@/pages/Auth";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import React from "react";
 import CourseDetail from "./pages/CourseDetail";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -35,20 +37,13 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth" element={<Auth />} />
-          {/* New Course Detail route */}
           <Route path="/course/:id" element={<CourseDetail />} />
-          {/* All custom/protected routes above the catch-all */}
-          {/* Example of a protected route; add real private pages below: */}
-          {/*
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          */}
+          {/* Admin route */}
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

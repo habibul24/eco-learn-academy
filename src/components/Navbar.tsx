@@ -14,11 +14,21 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading } = useAuthUser();
+  const [isAdmin, setIsAdmin] = React.useState(false);
 
-  async function handleLogout() {
-    await import("@/integrations/supabase/client").then(({ supabase }) => supabase.auth.signOut());
-    navigate("/auth");
-  }
+  React.useEffect(() => {
+    async function checkAdmin() {
+      if (user?.id) {
+        const { data } = await import("@/integrations/supabase/client").then(({ supabase }) =>
+          supabase.from("user_roles").select("role").eq("user_id", user.id)
+        );
+        setIsAdmin(data?.some((r: any) => r.role === "admin"));
+      } else {
+        setIsAdmin(false);
+      }
+    }
+    checkAdmin();
+  }, [user]);
 
   return (
     <header className="w-full bg-white dark:bg-background shadow-md fixed top-0 left-0 z-40">
@@ -45,12 +55,25 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={cn(
+                "text-lg font-semibold text-yellow-700 hover:text-green-700 underline"
+              )}
+            >
+              Admin
+            </Link>
+          )}
         </div>
         <div>
           {loading ? null : user ? (
             <div className="flex items-center gap-3">
               <span className="text-green-800 font-medium">{user.email}</span>
-              <Button variant="secondary" onClick={handleLogout}>Logout</Button>
+              <Button variant="secondary" onClick={async () => {
+                await import("@/integrations/supabase/client").then(({ supabase }) => supabase.auth.signOut());
+                navigate("/auth");
+              }}>Logout</Button>
             </div>
           ) : (
             <Link
