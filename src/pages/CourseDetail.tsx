@@ -69,11 +69,11 @@ export default function CourseDetail() {
         try {
           let enrollResult;
           if (paypalOrderId) {
-            enrollResult = await (window as any).supabase.functions.invoke("paypal-pay-course", {
+            enrollResult = await supabase.functions.invoke("paypal-pay-course", {
               body: { action: "capture", course_id: course.id, order_id: paypalOrderId },
             });
           } else if (stripeSessionId) {
-            enrollResult = await (window as any).supabase.functions.invoke("stripe-enroll-course", {
+            enrollResult = await supabase.functions.invoke("stripe-enroll-course", {
               body: { course_id: course.id, stripe_session_id: stripeSessionId },
             });
           }
@@ -124,6 +124,7 @@ export default function CourseDetail() {
       setProgress(pct);
       setAllWatched(completed === total && total > 0);
       if (completed === total && total > 0 && user && !sentCertificateEmail) {
+        console.log("[Certificate Generation] User object:", user);
         const certRes = await supabase
           .from("certificates")
           .select("*")

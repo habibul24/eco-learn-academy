@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -75,6 +74,11 @@ serve(async (req) => {
     // Create checkout session
     let session;
     try {
+      const frontendUrl = Deno.env.get("FRONTEND_URL");
+      if (!frontendUrl) {
+        console.log("[stripe-pay-course] FRONTEND_URL not set");
+        return new Response(JSON.stringify({ error: "FRONTEND_URL not set" }), { headers: corsHeaders, status: 500 });
+      }
       session = await stripe.checkout.sessions.create({
         customer: customerId,
         customer_email: !customerId ? user.email : undefined,
@@ -91,8 +95,8 @@ serve(async (req) => {
           supabase_course_id: course_id,
         },
         mode: "payment",
-        success_url: `${Deno.env.get("SUPABASE_URL")}/course/${course_id}?payment=success`,
-        cancel_url: `${Deno.env.get("SUPABASE_URL")}/course/${course_id}?payment=cancel`,
+        success_url: `${frontendUrl}/course/${course_id}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${frontendUrl}/course/${course_id}?payment=cancel`,
       });
       console.log("[stripe-pay-course] Stripe session created", { sessionId: session.id, url: session.url });
     } catch (err) {

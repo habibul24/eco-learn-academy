@@ -108,8 +108,8 @@ serve(async (req) => {
             }
           ],
           application_context: {
-            return_url: `${Deno.env.get("SUPABASE_URL")}/course/${course_id}?payment=success`,
-            cancel_url: `${Deno.env.get("SUPABASE_URL")}/course/${course_id}?payment=cancel`
+            return_url: `${Deno.env.get("FRONTEND_URL")}/course/${course_id}?payment=success`,
+            cancel_url: `${Deno.env.get("FRONTEND_URL")}/course/${course_id}?payment=cancel`
           }
         })
       });
