@@ -8,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client"; // FIX: Static import
 const navLinks = [
   { name: "Home", path: "/" },
   { name: "Courses", path: "/courses" },
-  { name: "About", path: "/about" },
 ];
 
 export default function Navbar() {
