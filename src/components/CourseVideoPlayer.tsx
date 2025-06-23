@@ -106,6 +106,7 @@ type CourseVideoPlayerProps = {
   fallbackImage?: string;
   videoId?: number;
   onComplete?: () => void;
+  isFirstVideo?: boolean;
 };
 
 export default function CourseVideoPlayer({
@@ -114,6 +115,7 @@ export default function CourseVideoPlayer({
   fallbackImage,
   videoId,
   onComplete,
+  isFirstVideo = false,
 }: CourseVideoPlayerProps) {
   const { user } = useAuthUser();
   const ytVideoId = getYoutubeVideoId(videoUrl ?? "");
@@ -134,12 +136,20 @@ export default function CourseVideoPlayer({
     picked: videoUrl && ytVideoId ? "YouTubePlayer" : videoUrl ? "GenericVideoPlayer" : "Image fallback",
     userId: user?.id,
     courseTitle,
-    videoId
+    videoId,
+    isFirstVideo,
+    userExists: !!user,
+    shouldShowAuthWarning: !user && !isFirstVideo,
+    videoUrlType: videoUrl ? (videoUrl.includes('youtube') || videoUrl.includes('youtu.be') ? 'YouTube' : 'Other') : 'None'
   });
 
-  if (!user) {
+  // Only show AuthWarning for non-first videos when user is not authenticated
+  if (!user && !isFirstVideo) {
+    console.log("[CourseVideoPlayer] Showing AuthWarning - user not authenticated and not first video");
     return <AuthWarning />;
   }
+
+  console.log("[CourseVideoPlayer] Proceeding to render video player");
 
   // Get courseId from URL
   const courseId = (() => {
@@ -205,6 +215,32 @@ export default function CourseVideoPlayer({
     }
   };
 
+  // If no video URL, show fallback image
+  if (!videoUrl) {
+    console.log("[CourseVideoPlayer] No video URL, showing fallback image");
+    return (
+      <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex flex-col justify-center items-center relative">
+        <img
+          src={fallbackImage}
+          alt="Course"
+          className="w-full h-full object-cover rounded-lg"
+        />
+      </div>
+    );
+  }
+
+  // Temporary debug display
+  if (process.env.NODE_ENV === 'development') {
+    console.log("[CourseVideoPlayer] Rendering video player with:", {
+      videoUrl,
+      ytVideoId,
+      isFirstVideo,
+      user: !!user,
+      courseTitle
+    });
+  }
+
+  // For first video without user, show video but no progress tracking
   if (videoUrl && !ytVideoId) {
     return (
       <div className="rounded-lg overflow-hidden mb-4 aspect-video bg-black/5 border border-gray-200 flex flex-col justify-center items-center relative">
@@ -213,7 +249,8 @@ export default function CourseVideoPlayer({
           courseTitle={courseTitle}
           onVideoEnd={() => setVideoEnded(true)}
         />
-        {videoEnded && !completed && (
+        {/* Only show mark complete button if user is authenticated */}
+        {videoEnded && !completed && user && (
           <MarkCompleteButton onClick={handleMarkComplete} loading={saving} />
         )}
         {completed && (
@@ -250,7 +287,8 @@ export default function CourseVideoPlayer({
           className="w-full h-full object-cover rounded-lg"
         />
       )}
-      {videoEnded && !completed && (
+      {/* Only show mark complete button if user is authenticated */}
+      {videoEnded && !completed && user && (
         <MarkCompleteButton onClick={handleMarkComplete} loading={saving} />
       )}
       {completed && (

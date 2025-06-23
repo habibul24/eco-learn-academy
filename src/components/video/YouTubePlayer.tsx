@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from "react";
 import { supabase, validateSupabaseClient } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -10,7 +9,7 @@ import MarkCompleteButton from "./MarkCompleteButton";
 type YouTubePlayerProps = {
   videoId: string;
   courseTitle: string;
-  user: any;
+  user?: any;
   videoDbId?: number;
   onComplete?: () => void;
 };
@@ -97,7 +96,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   }, [playerReady, onComplete, videoId, showComplete]);
 
   useEffect(() => {
-    if (!videoId || !videoDbId || !user || !containerRef.current) {
+    if (!videoId || !containerRef.current) {
       return;
     }
 

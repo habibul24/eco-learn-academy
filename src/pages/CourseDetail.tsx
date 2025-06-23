@@ -53,6 +53,11 @@ export default function CourseDetail() {
 
   // Sync current video
   React.useEffect(() => {
+    console.log("[CourseDetail] Setting activeVideoUrl:", {
+      videosLength: videos.length,
+      firstVideoUrl: videos.length > 0 ? videos[0].video_url : null,
+      currentActiveVideoUrl: activeVideoUrl
+    });
     setActiveVideoUrl(videos.length > 0 ? videos[0].video_url : null);
   }, [videos]);
 
@@ -210,6 +215,20 @@ export default function CourseDetail() {
   const whoFor = extractSection(course.description, "Who is this course for?");
   const objectives = extractSection(course.description, "Learning Objectives");
   const firstVideoUrl = videos.length > 0 ? videos[0].video_url : null;
+  
+  // Determine if current video is the first video - more robust logic
+  const currentVideoIndex = videos.findIndex(v => v.video_url === activeVideoUrl);
+  const isFirstVideo = currentVideoIndex === 0; // First video is at index 0
+  
+  // Debug logging
+  console.log("[CourseDetail DEBUG]", {
+    videosLength: videos.length,
+    firstVideoUrl,
+    activeVideoUrl,
+    isFirstVideo,
+    currentVideoIndex,
+    firstVideoIndex: videos.findIndex(v => v.video_url === activeVideoUrl)
+  });
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F9F8F3]">
@@ -223,6 +242,7 @@ export default function CourseDetail() {
             courseTitle={course.title}
             fallbackImage={DEFAULT_IMAGE}
             videoId={videos.find(v => v.video_url === activeVideoUrl)?.id}
+            isFirstVideo={isFirstVideo}
           />
           <CourseDescriptionSections
             description={course.description}

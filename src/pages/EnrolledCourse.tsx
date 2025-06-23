@@ -1,4 +1,3 @@
-
 import React from "react";
 import Navbar from "@/components/Navbar";
 import CourseContentSidebar from "@/components/CourseContentSidebar";
@@ -83,6 +82,10 @@ export default function EnrolledCourse() {
 
   const priceFormatted = `HKD ${course.price ? course.price.toFixed(2) : "0.00"}`;
   const firstVideoUrl = videos.length > 0 ? videos[0].video_url : null;
+  
+  // Determine if current video is the first video - more robust logic
+  const currentVideoIndex = videos.findIndex(v => v.video_url === activeVideoUrl);
+  const isFirstVideo = currentVideoIndex === 0; // First video is at index 0
 
   return (
     <div className="flex flex-col min-h-screen bg-[#FCF6E8]">
@@ -116,6 +119,7 @@ export default function EnrolledCourse() {
               courseTitle={course.title}
               fallbackImage={DEFAULT_IMAGE}
               videoId={videos.find(v => v.video_url === activeVideoUrl)?.id}
+              isFirstVideo={isFirstVideo}
               onComplete={() => {
                 // Force a page refresh to update progress
                 setTimeout(() => window.location.reload(), 1000);
