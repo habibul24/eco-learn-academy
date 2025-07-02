@@ -71,7 +71,7 @@ export default function CourseCard({
               minWidth: 140,
             }}
           >
-            {enrolled ? "Continue learning" : "View Course"}
+            {enrolled ? "Continue Learning" : "View Course"}
           </button>
         </div>
       </div>
