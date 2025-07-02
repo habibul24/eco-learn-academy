@@ -1,11 +1,9 @@
-
 import Navbar from "@/components/Navbar";
 import CourseCard from "@/components/CourseCard";
 import { Users, CheckCircle, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
-import { testSupabaseConnection } from "@/utils/supabaseTest";
 
 const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=620&q=80";
 
@@ -13,63 +11,33 @@ export default function Index() {
   const [featuredCourse, setFeaturedCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [enrolled, setEnrolled] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<string>('Testing connection...');
   const { user, loading: userLoading } = useAuthUser();
 
   useEffect(() => {
+    // Debugging: Ensure supabase is available
+    console.log("[debug] supabase is", supabase);
+
     async function fetchFeaturedCourse() {
       try {
-        console.log("[Index] Starting to fetch featured course...");
-        setError(null);
-        setConnectionStatus('Testing database connection...');
-        
-        // Test connection first
-        const connectionTest = await testSupabaseConnection();
-        if (!connectionTest.success) {
-          console.error("[Index] Connection test failed:", connectionTest.error);
-          setError(connectionTest.error || "Database connection failed");
-          setConnectionStatus('Connection failed');
-          setLoading(false);
-          return;
-        }
-        
-        setConnectionStatus('Connection successful, fetching courses...');
-        
-        const { data, error } = await supabase
-          .from("courses")
-          .select("*")
-          .order("id")
-          .limit(1)
-          .maybeSingle();
-          
+        const { data, error } = await supabase.from("courses").select("*").order("id").limit(1).single();
         if (error) {
-          console.error("[Index] Error fetching featured course:", error);
-          setError(`Database error: ${error.message}`);
-          setConnectionStatus('Error fetching data');
-        } else if (data) {
-          console.log("[Index] Featured course fetched:", data);
+          console.error("[debug] Error fetching course:", error);
+        }
+        if (data) {
           setFeaturedCourse({
-            id: data.id,
+            id: data.id, // keep the id so we can check enrollment
             image: DEFAULT_COURSE_IMAGE,
             title: data.title,
-            description: (data.description ?? "").slice(0, 100),
+            description: (data.description ?? "").slice(0, 100), // pass description (truncated if needed)
             price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
             onView: () => window.location.href = `/course/${data.id}`,
+            // Do NOT pass enrolled here yet
           });
-          setConnectionStatus('Data loaded successfully');
-        } else {
-          console.log("[Index] No courses found in database");
-          setError("No courses available in the database.");
-          setConnectionStatus('No courses found');
         }
-      } catch (e: any) {
-        console.error("[Index] Exception fetching featured course:", e);
-        setError(`Network error: ${e?.message || 'Please check your internet connection'}`);
-        setConnectionStatus('Network error');
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.error("[debug] Exception fetching course:", e);
       }
+      setLoading(false);
     }
     fetchFeaturedCourse();
   }, []);
@@ -78,18 +46,14 @@ export default function Index() {
   useEffect(() => {
     async function checkEnrollment() {
       if (featuredCourse && featuredCourse.id && user) {
-        try {
-          const { data: enrollData } = await supabase
-            .from("course_enrollments")
-            .select("*")
-            .eq("user_id", user.id)
-            .eq("course_id", featuredCourse.id)
-            .eq("status", "active")
-            .maybeSingle();
-          setEnrolled(!!enrollData);
-        } catch (e) {
-          console.error("[Index] Error checking enrollment:", e);
-        }
+        const { data: enrollData } = await supabase
+          .from("course_enrollments")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("course_id", featuredCourse.id)
+          .eq("status", "active")
+          .maybeSingle();
+        setEnrolled(!!enrollData);
       } else {
         setEnrolled(false);
       }
@@ -124,21 +88,7 @@ export default function Index() {
         <div className="w-full flex justify-center">
           <div className="max-w-xs">
             {loading || userLoading ? (
-              <div className="text-white text-center">
-                <div className="mb-2">Loading courses...</div>
-                <div className="text-sm text-green-200">{connectionStatus}</div>
-              </div>
-            ) : error ? (
-              <div className="text-red-300 text-center bg-red-900 bg-opacity-50 p-4 rounded-lg">
-                <p className="mb-2">⚠️ {error}</p>
-                <p className="text-sm text-red-200 mb-3">Status: {connectionStatus}</p>
-                <button 
-                  onClick={() => window.location.reload()} 
-                  className="text-yellow-400 underline hover:text-yellow-300"
-                >
-                  Try Again
-                </button>
-              </div>
+              <div className="text-white">Loading...</div>
             ) : featuredCourse ? (
               <CourseCard
                 image={featuredCourse.image}
@@ -149,10 +99,7 @@ export default function Index() {
                 enrolled={enrolled}
               />
             ) : (
-              <div className="text-white text-center">
-                <p className="mb-2">No featured courses available.</p>
-                <p className="text-sm text-green-200">Please check back later or contact support.</p>
-              </div>
+              <div className="text-white">No featured course available.</div>
             )}
           </div>
         </div>

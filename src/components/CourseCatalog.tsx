@@ -19,32 +19,12 @@ export default function CourseCatalog() {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchCourses() {
-      try {
-        console.log("[CourseCatalog] Fetching courses...");
-        setError(null);
-        
-        const { data, error } = await supabase
-          .from("courses")
-          .select("*")
-          .order("id");
-          
-        if (error) {
-          console.error("[CourseCatalog] Database error:", error);
-          setError(`Unable to load courses: ${error.message}`);
-        } else if (data) {
-          console.log("[CourseCatalog] Courses fetched:", data.length);
-          setCourses(data);
-        }
-      } catch (e) {
-        console.error("[CourseCatalog] Exception:", e);
-        setError("Network error. Please check your connection.");
-      } finally {
-        setLoading(false);
-      }
+      const { data, error } = await supabase.from("courses").select("*").order("id");
+      if (data) setCourses(data);
+      setLoading(false);
     }
     fetchCourses();
   }, []);
@@ -60,23 +40,11 @@ export default function CourseCatalog() {
         Explore Our Sustainability Courses
       </h2>
       {loading ? (
-        <div className="py-8">Loading courses...</div>
-      ) : error ? (
-        <div className="py-8 text-center">
-          <p className="text-red-600 mb-4">⚠️ {error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            Try Again
-          </button>
-        </div>
+        <div className="py-8">Loading...</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10">
           {courses.length === 0 && (
-            <div className="col-span-3 text-gray-500 text-center">
-              No courses available. Please check back later.
-            </div>
+            <div className="col-span-3 text-gray-500">No courses available.</div>
           )}
           {courses.map((course) => (
             <CourseCard
