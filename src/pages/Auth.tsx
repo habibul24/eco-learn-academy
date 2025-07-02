@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -22,10 +23,14 @@ export default function Auth() {
     setError(null);
 
     try {
+      console.log("[Auth] Starting authentication...", { isSignUp, email });
+      
       if (isSignUp) {
         const [first_name, ...last] = fullName.split(" ");
         const last_name = last.join(" ");
         const redirectUrl = `${window.location.origin}/auth`;
+        
+        console.log("[Auth] Attempting signup...");
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -34,17 +39,22 @@ export default function Auth() {
             data: {
               first_name,
               last_name,
-              full_name: fullName, // <-- Store full_name!
+              full_name: fullName,
             }
           }
         });
+        
         if (error) {
-          setError(error.message);
-          toast({ title: "Signup Failed", description: error.message });
+          console.error("[Auth] Signup error:", error);
+          const errorMsg = error.message.includes('fetch') 
+            ? "Network error. Please check your connection and try again."
+            : error.message;
+          setError(errorMsg);
+          toast({ title: "Signup Failed", description: errorMsg });
         } else {
+          console.log("[Auth] Signup successful, sending welcome email...");
           // Send Welcome Email
           try {
-            console.log("[Auth] Attempting to send welcome email via Resend...");
             await sendEmail({
               event: "welcome",
               to: email,
@@ -59,15 +69,27 @@ export default function Auth() {
           setIsSignUp(false);
         }
       } else {
+        console.log("[Auth] Attempting login...");
         const { error } = await supabase.auth.signInWithPassword({ email, password });
+        
         if (error) {
-          setError(error.message);
-          toast({ title: "Login Failed", description: error.message });
+          console.error("[Auth] Login error:", error);
+          const errorMsg = error.message.includes('fetch') 
+            ? "Network error. Please check your connection and try again."
+            : error.message;
+          setError(errorMsg);
+          toast({ title: "Login Failed", description: errorMsg });
         } else {
+          console.log("[Auth] Login successful");
           toast({ title: "Logged in", description: "Welcome back!" });
           navigate("/");
         }
       }
+    } catch (e: any) {
+      console.error("[Auth] Exception during auth:", e);
+      const errorMsg = "Network error. Please check your connection and try again.";
+      setError(errorMsg);
+      toast({ title: "Connection Error", description: errorMsg });
     } finally {
       setLoading(false);
     }
@@ -108,7 +130,11 @@ export default function Auth() {
               required
               disabled={loading}
             />
-            {error && <div className="text-red-600">{error}</div>}
+            {error && (
+              <div className="text-red-600 text-sm bg-red-50 p-3 rounded border border-red-200">
+                {error}
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Loading..." : (isSignUp ? "Create Account" : "Login")}
             </Button>
