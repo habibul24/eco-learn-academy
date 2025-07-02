@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import Navbar from "@/components/Navbar";
 import { sendEmail } from "@/utils/sendEmail";
+import { testSupabaseAuth } from "@/utils/supabaseTest";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -15,15 +16,28 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>('');
   const navigate = useNavigate();
 
   const onAuth = async (evt: React.FormEvent) => {
     evt.preventDefault();
     setLoading(true);
     setError(null);
+    setConnectionStatus('Testing connection...');
 
     try {
       console.log("[Auth] Starting authentication...", { isSignUp, email });
+      
+      // Test auth connection first
+      const authTest = await testSupabaseAuth();
+      if (!authTest.success) {
+        console.error("[Auth] Auth connection test failed:", authTest.error);
+        setError(authTest.error || "Authentication service unavailable");
+        setConnectionStatus('Auth service unavailable');
+        return;
+      }
+      
+      setConnectionStatus('Connected, processing...');
       
       if (isSignUp) {
         const [first_name, ...last] = fullName.split(" ");
@@ -46,13 +60,21 @@ export default function Auth() {
         
         if (error) {
           console.error("[Auth] Signup error:", error);
-          const errorMsg = error.message.includes('fetch') 
-            ? "Network error. Please check your connection and try again."
-            : error.message;
+          let errorMsg = error.message;
+          
+          if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+            errorMsg = "Network connection failed. Please check your internet connection and try again.";
+          } else if (error.message.includes('User already registered')) {
+            errorMsg = "An account with this email already exists. Please try logging in instead.";
+          }
+          
           setError(errorMsg);
+          setConnectionStatus('Signup failed');
           toast({ title: "Signup Failed", description: errorMsg });
         } else {
           console.log("[Auth] Signup successful, sending welcome email...");
+          setConnectionStatus('Account created, sending welcome email...');
+          
           // Send Welcome Email
           try {
             await sendEmail({
@@ -65,7 +87,9 @@ export default function Auth() {
             console.error("sendEmail welcome error:", e);
             toast({ title: "Could not send welcome email", description: e?.message });
           }
+          
           toast({ title: "Signup successful!", description: "Check your email for confirmation." });
+          setConnectionStatus('Success! Check your email.');
           setIsSignUp(false);
         }
       } else {
@@ -74,21 +98,29 @@ export default function Auth() {
         
         if (error) {
           console.error("[Auth] Login error:", error);
-          const errorMsg = error.message.includes('fetch') 
-            ? "Network error. Please check your connection and try again."
-            : error.message;
+          let errorMsg = error.message;
+          
+          if (error.message.includes('fetch') || error.message.includes('Failed to fetch')) {
+            errorMsg = "Network connection failed. Please check your internet connection and try again.";
+          } else if (error.message.includes('Invalid login credentials')) {
+            errorMsg = "Invalid email or password. Please check your credentials and try again.";
+          }
+          
           setError(errorMsg);
+          setConnectionStatus('Login failed');
           toast({ title: "Login Failed", description: errorMsg });
         } else {
           console.log("[Auth] Login successful");
+          setConnectionStatus('Login successful, redirecting...');
           toast({ title: "Logged in", description: "Welcome back!" });
           navigate("/");
         }
       }
     } catch (e: any) {
       console.error("[Auth] Exception during auth:", e);
-      const errorMsg = "Network error. Please check your connection and try again.";
+      const errorMsg = `Connection error: ${e?.message || 'Please check your internet connection and try again'}`;
       setError(errorMsg);
+      setConnectionStatus('Connection error');
       toast({ title: "Connection Error", description: errorMsg });
     } finally {
       setLoading(false);
@@ -103,6 +135,13 @@ export default function Auth() {
           <h1 className="text-2xl font-bold text-green-800">
             {isSignUp ? "Sign Up" : "Login"}
           </h1>
+          
+          {connectionStatus && (
+            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+              Status: {connectionStatus}
+            </div>
+          )}
+          
           <form className="flex flex-col gap-4" onSubmit={onAuth}>
             {isSignUp && (
               <Input
@@ -136,7 +175,7 @@ export default function Auth() {
               </div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : (isSignUp ? "Create Account" : "Login")}
+              {loading ? "Processing..." : (isSignUp ? "Create Account" : "Login")}
             </Button>
           </form>
           <div className="text-center">

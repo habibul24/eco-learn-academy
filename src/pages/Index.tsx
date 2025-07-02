@@ -1,9 +1,11 @@
+
 import Navbar from "@/components/Navbar";
 import CourseCard from "@/components/CourseCard";
 import { Users, CheckCircle, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/hooks/useAuthUser";
+import { testSupabaseConnection } from "@/utils/supabaseTest";
 
 const DEFAULT_COURSE_IMAGE = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=620&q=80";
 
@@ -12,6 +14,7 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
   const [enrolled, setEnrolled] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>('Testing connection...');
   const { user, loading: userLoading } = useAuthUser();
 
   useEffect(() => {
@@ -19,20 +22,19 @@ export default function Index() {
       try {
         console.log("[Index] Starting to fetch featured course...");
         setError(null);
+        setConnectionStatus('Testing database connection...');
         
-        // Test basic connectivity first
-        const { data: testData, error: testError } = await supabase
-          .from("courses")
-          .select("count", { count: 'exact', head: true });
-          
-        if (testError) {
-          console.error("[Index] Database connection test failed:", testError);
-          setError("Unable to connect to database. Please check your connection.");
+        // Test connection first
+        const connectionTest = await testSupabaseConnection();
+        if (!connectionTest.success) {
+          console.error("[Index] Connection test failed:", connectionTest.error);
+          setError(connectionTest.error || "Database connection failed");
+          setConnectionStatus('Connection failed');
           setLoading(false);
           return;
         }
         
-        console.log("[Index] Database connection successful");
+        setConnectionStatus('Connection successful, fetching courses...');
         
         const { data, error } = await supabase
           .from("courses")
@@ -44,6 +46,7 @@ export default function Index() {
         if (error) {
           console.error("[Index] Error fetching featured course:", error);
           setError(`Database error: ${error.message}`);
+          setConnectionStatus('Error fetching data');
         } else if (data) {
           console.log("[Index] Featured course fetched:", data);
           setFeaturedCourse({
@@ -54,13 +57,16 @@ export default function Index() {
             price: data.price ? `USD ${(data.price as number).toFixed(2)}` : "USD 0.00",
             onView: () => window.location.href = `/course/${data.id}`,
           });
+          setConnectionStatus('Data loaded successfully');
         } else {
           console.log("[Index] No courses found in database");
           setError("No courses available in the database.");
+          setConnectionStatus('No courses found');
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("[Index] Exception fetching featured course:", e);
-        setError("Network error. Please check your internet connection.");
+        setError(`Network error: ${e?.message || 'Please check your internet connection'}`);
+        setConnectionStatus('Network error');
       } finally {
         setLoading(false);
       }
@@ -118,10 +124,14 @@ export default function Index() {
         <div className="w-full flex justify-center">
           <div className="max-w-xs">
             {loading || userLoading ? (
-              <div className="text-white">Loading courses...</div>
+              <div className="text-white text-center">
+                <div className="mb-2">Loading courses...</div>
+                <div className="text-sm text-green-200">{connectionStatus}</div>
+              </div>
             ) : error ? (
-              <div className="text-red-300 text-center">
+              <div className="text-red-300 text-center bg-red-900 bg-opacity-50 p-4 rounded-lg">
                 <p className="mb-2">⚠️ {error}</p>
+                <p className="text-sm text-red-200 mb-3">Status: {connectionStatus}</p>
                 <button 
                   onClick={() => window.location.reload()} 
                   className="text-yellow-400 underline hover:text-yellow-300"
