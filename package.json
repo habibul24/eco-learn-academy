@@ -77,5 +77,13 @@
     "tailwindcss": "^3.4.4",
     "typescript": "^5.2.2",
     "vite": "^5.3.1"
+  },
+  "scripts": {
+  "dev": "vite",
+  "build": "tsc && vite build",
+  "build:dev": "vite build --mode development",
+  "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+  "preview": "vite preview",
+  "prepare-deploy": "node scripts/setup-env.js"
   }
 }
